@@ -145,6 +145,110 @@ button:active {
   z-index: 10;
 }
 
+/* Help modal (first-load tips + credits) */
+#help-modal[hidden] {
+  display: none;
+}
+
+#help-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  pointer-events: auto;
+}
+
+#help-modal .help-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+#help-modal .help-card {
+  position: relative;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100dvh - 48px));
+  overflow: auto;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  padding: 14px 14px 16px;
+}
+
+#help-modal .help-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(233, 236, 242, 0.12);
+  margin-bottom: 12px;
+}
+
+#help-modal .help-title {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+#help-modal .help-close {
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+#help-modal .help-body {
+  color: rgba(233, 236, 242, 0.86);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+#help-modal .help-list {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+#help-modal a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(110, 231, 255, 0.35);
+}
+
+#help-modal a:hover {
+  border-bottom-color: rgba(110, 231, 255, 0.75);
+}
+
+#help-modal details {
+  margin-top: 10px;
+  border-top: 1px solid rgba(233, 236, 242, 0.12);
+  padding-top: 10px;
+}
+
+#help-modal summary {
+  cursor: pointer;
+  color: rgba(233, 236, 242, 0.86);
+  font-weight: 650;
+}
+
+#help-modal .help-credits p {
+  margin: 10px 0 0;
+  color: rgba(233, 236, 242, 0.80);
+}
+
+@media (max-width: 420px) {
+  #help-modal {
+    padding: 12px;
+  }
+
+  #help-modal .help-card {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    padding: 12px 12px 14px;
+  }
+}
+
 /* macOS overlay */
 .macos-overlay {
   position: absolute;

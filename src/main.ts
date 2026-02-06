@@ -17,9 +17,11 @@ function qs<T extends Element>(sel: string): T {
 const canvas = qs<HTMLCanvasElement>("#c");
 const prevBtn = qs<HTMLButtonElement>("#prev");
 const nextBtn = qs<HTMLButtonElement>("#next");
+const helpBtn = qs<HTMLButtonElement>("#help");
 const poiLabel = qs<HTMLSpanElement>("#poi-label");
 const overlayRoot = qs<HTMLDivElement>("#overlay-root");
 const annotationLayer = qs<HTMLDivElement>("#annotation-layer");
+const appRoot = qs<HTMLDivElement>("#app");
 
 function createAnnotation() {
   const el = document.createElement("div");
@@ -207,10 +209,144 @@ const loader = new GLTFLoader();
 let gltfRoot: THREE.Object3D | null = null;
 let macRoot: THREE.Object3D | null = null;
 let pois: Poi[] = [];
-let activePoiIndex = 0;
+let activePoiIndex = -1;
 
 const annotationEl = createAnnotation();
 setAnnotationText(annotationEl, "");
+
+// Help modal (shown on first load, and toggleable via ?)
+let helpOpen = false;
+let restoreFocusEl: HTMLElement | null = null;
+let controlsEnabledBeforeHelp = false;
+
+const helpModal = document.createElement("div");
+helpModal.id = "help-modal";
+helpModal.hidden = true;
+helpModal.setAttribute("role", "dialog");
+helpModal.setAttribute("aria-modal", "true");
+helpModal.setAttribute("aria-labelledby", "help-title");
+helpModal.innerHTML = `
+  <div class="help-scrim" data-close-help="1"></div>
+  <div class="help-card" role="document">
+    <div class="help-head">
+      <div class="help-title" id="help-title">Tips & Credits</div>
+      <button type="button" class="help-close" data-close-help="1" aria-label="Close help">Close</button>
+    </div>
+    <div class="help-body" id="help-desc">
+      <ul class="help-list">
+        <li><b>Prev/Next</b> (or Left/Right arrows) cycles points of interest.</li>
+        <li><b>Drag</b> to orbit a little around the focused item.</li>
+        <li><b>Double tap / double click</b> the MacBook to open the portfolio overlay.</li>
+        <li><b>Esc</b> closes the overlay.</li>
+      </ul>
+
+      <details class="help-details">
+        <summary>3D model credits (CC BY 4.0)</summary>
+        <div class="help-credits">
+          <p>
+            "<a href="https://skfb.ly/6SBrS" target="_blank" rel="noopener noreferrer">Final Fight Arcade</a>" by brysew is
+            licensed under
+            <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer"
+              >Creative Commons Attribution</a
+            >.
+          </p>
+          <p>
+            "<a href="https://skfb.ly/oWSpq" target="_blank" rel="noopener noreferrer">MacBook Laptop</a>" by Issac
+            Ghazanfar is licensed under
+            <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer"
+              >Creative Commons Attribution</a
+            >.
+          </p>
+          <p>
+            "<a href="https://skfb.ly/oGP7t" target="_blank" rel="noopener noreferrer">Work Table</a>" by rickmaolly is
+            licensed under
+            <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer"
+              >Creative Commons Attribution</a
+            >.
+          </p>
+          <p>
+            "<a href="https://skfb.ly/6R7A9" target="_blank" rel="noopener noreferrer">Wall Floor Model Corner Room</a>" by
+            Aerial_Knight is licensed under
+            <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer"
+              >Creative Commons Attribution</a
+            >.
+          </p>
+          <p>
+            "<a href="https://skfb.ly/oFYwq" target="_blank" rel="noopener noreferrer">Neon_ Posters</a>" by Seniora_Kora is
+            licensed under
+            <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer"
+              >Creative Commons Attribution</a
+            >.
+          </p>
+        </div>
+      </details>
+    </div>
+  </div>
+`;
+appRoot.appendChild(helpModal);
+
+helpBtn.setAttribute("aria-controls", "help-modal");
+helpBtn.setAttribute("aria-expanded", "false");
+
+function openHelp() {
+  if (helpOpen) return;
+  helpOpen = true;
+  restoreFocusEl = document.activeElement as HTMLElement | null;
+  helpBtn.setAttribute("aria-expanded", "true");
+  helpModal.hidden = false;
+
+  controlsEnabledBeforeHelp = controls.enabled;
+  controls.enabled = false;
+  requestRenderIfNotRequested(render);
+
+  const closeBtn = helpModal.querySelector<HTMLButtonElement>(".help-close");
+  closeBtn?.focus?.();
+}
+
+function closeHelp(markSeen = true) {
+  if (!helpOpen) return;
+  helpOpen = false;
+  helpBtn.setAttribute("aria-expanded", "false");
+  helpModal.hidden = true;
+
+  if (markSeen) {
+    try {
+      localStorage.setItem("helpSeen.v1", "1");
+    } catch {
+      // ignore
+    }
+  }
+
+  if (overlayRoot.hidden && !transition) {
+    controls.enabled = controlsEnabledBeforeHelp;
+    requestRenderIfNotRequested(render);
+  }
+
+  restoreFocusEl?.focus?.();
+  restoreFocusEl = null;
+}
+
+function toggleHelp() {
+  if (helpOpen) closeHelp(false);
+  else openHelp();
+}
+
+helpBtn.addEventListener("click", () => toggleHelp());
+helpModal.addEventListener("click", (e) => {
+  const t = e.target as HTMLElement | null;
+  if (!t) return;
+  if (t.closest("[data-close-help]")) closeHelp(true);
+});
+
+function maybeShowHelpOnFirstLoad() {
+  try {
+    const seen = localStorage.getItem("helpSeen.v1");
+    if (seen) return;
+  } catch {
+    // ignore
+  }
+  openHelp();
+}
 
 function setActivePoiIndex(nextIndex: number) {
   if (!pois.length) return;
@@ -302,6 +438,11 @@ window.addEventListener("keydown", (e) => {
       // Close via URL so it works even if the overlay module is still loading.
       setHashParam("overlay", null);
     }
+    return;
+  }
+
+  if (helpOpen) {
+    if (e.key === "Escape") closeHelp(true);
     return;
   }
 
@@ -427,7 +568,7 @@ function render() {
   }
 
   // Annotation for active POI
-  if (pois.length) {
+  if (pois.length && activePoiIndex >= 0) {
     const poi = pois[activePoiIndex]!;
     const wpos = poi.anchor.getWorldPosition(tmpV);
     const p = projectToScreen(wpos, camera, canvas);
@@ -487,6 +628,7 @@ async function init() {
   applyUrlState();
 
   requestRenderIfNotRequested(render);
+  maybeShowHelpOnFirstLoad();
 }
 
 void init().catch((err) => {
@@ -503,13 +645,27 @@ function applyUrlState() {
   const poiId = (getHashParam("poi") || "").toLowerCase();
   if (poiId) {
     const idx = pois.findIndex((p) => p.id === poiId);
-    if (idx >= 0 && idx !== activePoiIndex) setActivePoiIndex(idx);
+    if (idx >= 0) {
+      if (idx !== activePoiIndex) setActivePoiIndex(idx);
+    } else {
+      // Invalid deep link: snap to the first POI (replace to avoid polluting history).
+      setHashParam("poi", pois[0]!.id, "replace");
+      if (activePoiIndex !== 0) setActivePoiIndex(0);
+    }
+  } else {
+    // No POI specified: default to the first POI.
+    setHashParam("poi", pois[0]!.id, "replace");
+    if (activePoiIndex !== 0) setActivePoiIndex(0);
   }
 
   const overlay = (getHashParam("overlay") || "").toLowerCase();
   const wantOverlay = overlay === "macos";
-  if (wantOverlay) void openMacOverlayInternal();
-  else closeMacOverlayInternal();
+  if (wantOverlay) {
+    closeHelp(false);
+    void openMacOverlayInternal();
+  } else {
+    closeMacOverlayInternal();
+  }
 }
 
 window.addEventListener("hashchange", () => applyUrlState());
