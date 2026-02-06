@@ -1,13 +1,133 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-US">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>portfolio-v3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <title>Haleem Bello | Full Stack Developer</title>
+    <meta
+      name="description"
+      content="Performance-first 3D portfolio by Haleem Bello, a Full Stack Developer in Atlanta, GA. Explore projects, writing, and contact."
+    />
+    <meta name="author" content="Haleem Bello" />
+    <meta
+      name="keywords"
+      content="Haleem Bello, Full Stack Developer, Atlanta, TypeScript, Three.js, WebGL, React, Next.js, Node.js, Accessibility, Performance, Portfolio"
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0c10" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f6f6f7" media="(prefers-color-scheme: light)" />
+
+    <link rel="canonical" href="https://genialtechie.vercel.app/" />
+    <link rel="me" href="https://github.com/genialtechie" />
+    <link rel="me" href="https://www.linkedin.com/in/haleembello" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Haleem Bello" />
+    <meta property="og:title" content="Haleem Bello | Full Stack Developer" />
+    <meta
+      property="og:description"
+      content="Performance-first 3D portfolio by Haleem Bello. Guided room experience with projects, writing, and contact."
+    />
+    <meta property="og:url" content="https://genialtechie.vercel.app/" />
+    <meta property="og:image" content="https://genialtechie.vercel.app/og.png" />
+    <meta property="og:image:alt" content="Haleem Bello - Full Stack Developer" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Haleem Bello | Full Stack Developer" />
+    <meta
+      name="twitter:description"
+      content="Performance-first 3D portfolio by Haleem Bello. Explore projects, writing, and contact."
+    />
+    <meta name="twitter:image" content="https://genialtechie.vercel.app/og.png" />
+    <meta name="twitter:image:alt" content="Haleem Bello - Full Stack Developer" />
+
+    <!-- Icons / PWA -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            "@id": "#haleem-bello",
+            "name": "Haleem Bello",
+            "alternateName": "genialtechie",
+            "jobTitle": "Full Stack Developer",
+            "description": "Full Stack Developer with 4+ years of experience designing, developing, and deploying web applications with a focus on accessibility, performance, and design systems.",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Atlanta",
+              "addressRegion": "GA",
+              "addressCountry": "US"
+            },
+            "knowsAbout": [
+              "TypeScript",
+              "JavaScript",
+              "Three.js",
+              "WebGL",
+              "React",
+              "Next.js",
+              "Node.js",
+              "Accessibility",
+              "Performance optimization",
+              "Design systems"
+            ],
+            "email": "hbello1@ggc.edu",
+            "telephone": "+1-470-287-7285",
+            "url": "https://genialtechie.vercel.app/",
+            "sameAs": ["https://github.com/genialtechie", "https://www.linkedin.com/in/haleembello"]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "#website",
+            "name": "Haleem Bello",
+            "url": "https://genialtechie.vercel.app/",
+            "description": "Performance-first 3D portfolio by Haleem Bello, Full Stack Developer in Atlanta, GA.",
+            "publisher": { "@id": "#haleem-bello" },
+            "inLanguage": "en-US"
+          }
+        ]
+      }
+    </script>
+
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <div id="app">
+      <h1 class="sr-only">Haleem Bello, Full Stack Developer</h1>
+      <p class="sr-only">
+        Performance-first 3D portfolio. Use Prev/Next or Left/Right arrows to cycle points of interest. Double tap the
+        MacBook to open the portfolio overlay.
+      </p>
+
+      <noscript>
+        <div style="padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+          <h2 style="margin: 0 0 8px;">Haleem Bello</h2>
+          <p style="margin: 0 0 8px;">Full Stack Developer (Atlanta, GA)</p>
+          <p style="margin: 0 0 8px;">
+            Email: <a href="mailto:hbello1@ggc.edu">hbello1@ggc.edu</a>
+          </p>
+          <p style="margin: 0 0 8px;">
+            GitHub: <a href="https://github.com/genialtechie">github.com/genialtechie</a>
+          </p>
+          <p style="margin: 0;">
+            LinkedIn: <a href="https://www.linkedin.com/in/haleembello">linkedin.com/in/haleembello</a>
+          </p>
+        </div>
+      </noscript>
+
       <canvas id="c" aria-label="3D portfolio scene"></canvas>
 
       <div id="hud" aria-live="polite">
@@ -29,4 +149,3 @@
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
-

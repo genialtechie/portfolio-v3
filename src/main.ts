@@ -313,12 +313,12 @@ window.addEventListener("keydown", (e) => {
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 
-canvas.addEventListener("dblclick", (e) => {
+function tryActivateMacAt(clientX: number, clientY: number) {
   if (!gltfRoot || !macRoot) return;
 
   const rect = canvas.getBoundingClientRect();
-  ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  ndc.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+  ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  ndc.y = -(((clientY - rect.top) / rect.height) * 2 - 1);
   raycaster.setFromCamera(ndc, camera);
 
   const hits = raycaster.intersectObject(gltfRoot, true);
@@ -329,6 +329,78 @@ canvas.addEventListener("dblclick", (e) => {
     // Navigate via hash so back/forward works.
     setHashParams({ poi: "mac", overlay: "macos" });
   }
+}
+
+canvas.addEventListener("dblclick", (e) => {
+  tryActivateMacAt(e.clientX, e.clientY);
+});
+
+// Mobile: "dblclick" doesn't reliably fire for touch, so implement a tiny double-tap detector.
+let touchDown:
+  | {
+      id: number;
+      x: number;
+      y: number;
+      moved: boolean;
+    }
+  | null = null;
+let lastTap:
+  | {
+      t: number;
+      x: number;
+      y: number;
+    }
+  | null = null;
+
+const TAP_MOVE_PX = 14;
+const DOUBLE_TAP_MS = 360;
+const DOUBLE_TAP_RADIUS_PX = 26;
+
+canvas.addEventListener("pointerdown", (e) => {
+  if (e.pointerType !== "touch") return;
+  touchDown = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!touchDown) return;
+  if (e.pointerType !== "touch") return;
+  if (e.pointerId !== touchDown.id) return;
+  const dx = e.clientX - touchDown.x;
+  const dy = e.clientY - touchDown.y;
+  if (dx * dx + dy * dy > TAP_MOVE_PX * TAP_MOVE_PX) touchDown.moved = true;
+});
+
+canvas.addEventListener("pointerup", (e) => {
+  if (e.pointerType !== "touch") return;
+  if (touchDown && e.pointerId === touchDown.id && touchDown.moved) {
+    touchDown = null;
+    return;
+  }
+  touchDown = null;
+
+  const now = performance.now();
+  if (!lastTap) {
+    lastTap = { t: now, x: e.clientX, y: e.clientY };
+    return;
+  }
+
+  const dt = now - lastTap.t;
+  const dx = e.clientX - lastTap.x;
+  const dy = e.clientY - lastTap.y;
+  const within = dx * dx + dy * dy <= DOUBLE_TAP_RADIUS_PX * DOUBLE_TAP_RADIUS_PX;
+
+  if (dt <= DOUBLE_TAP_MS && within) {
+    lastTap = null;
+    tryActivateMacAt(e.clientX, e.clientY);
+    return;
+  }
+
+  lastTap = { t: now, x: e.clientX, y: e.clientY };
+});
+
+canvas.addEventListener("pointercancel", (e) => {
+  if (e.pointerType !== "touch") return;
+  touchDown = null;
 });
 
 function render() {

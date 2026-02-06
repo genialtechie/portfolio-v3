@@ -197,6 +197,10 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     const rootEl = document.createElement("div");
     rootEl.className = "tui";
 
+    rootEl.appendChild(createTuiLine("Haleem Bello", "plain"));
+    rootEl.appendChild(createTuiLine("Full Stack Developer | Atlanta, GA", "muted"));
+    rootEl.appendChild(createTuiLine("Focus: performance, accessibility, design systems.", "muted"));
+    rootEl.appendChild(createTuiLine("", "plain"));
     rootEl.appendChild(createTuiLine("$ portfolio --help", "plain"));
     rootEl.appendChild(createTuiLine("Commands:", "muted"));
 
@@ -208,6 +212,7 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
       { id: "writing", title: "writing", desc: "Posts and notes (content/writing/).", shortcut: "2" },
       { id: "about", title: "about", desc: "Short bio, skills, interests.", shortcut: "3" },
       { id: "contact", title: "contact", desc: "Where to reach me.", shortcut: "4" },
+      { id: "resume", title: "resume", desc: "Condensed resume.", shortcut: "5" },
     ];
 
     const pageIds = new Set(allPages.map((p) => p.id));
@@ -289,7 +294,7 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
 
     const tip = document.createElement("div");
     tip.className = "tui-tip";
-    tip.appendChild(createTuiLine("Keys: [h] home, [1-4] open section, [t] theme toggle.", "good"));
+    tip.appendChild(createTuiLine("Keys: [h] home, [1-5] open section, [t] theme toggle.", "good"));
     tip.appendChild(createTuiLine("Scene: Left/Right arrows cycle POIs. Esc closes overlay.", "muted"));
     rootEl.appendChild(tip);
 
@@ -368,6 +373,7 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     if (e.key === "2") openPage("writing");
     if (e.key === "3") openPage("about");
     if (e.key === "4") openPage("contact");
+    if (e.key === "5") openPage("resume");
   };
   window.addEventListener("keydown", onKeyDown);
 

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://genialtechie.vercel.app/sitemap.xml
