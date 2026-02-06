@@ -9,7 +9,7 @@ type Theme = "dark" | "light";
 type Page = {
   id: string;
   title: string;
-  kind: "home" | "md";
+  kind: "home" | "writing" | "md";
   load?: () => Promise<string>;
   srcPath?: string;
 };
@@ -107,7 +107,11 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
   root.innerHTML = "";
 
   const pages = buildPages();
-  const allPages: Page[] = [{ id: "home", title: "Home", kind: "home" }, ...pages];
+  const allPages: Page[] = [
+    { id: "home", title: "Home", kind: "home" },
+    { id: "writing", title: "Writing", kind: "writing" },
+    ...pages,
+  ];
 
   const overlay = document.createElement("div");
   overlay.className = "macos-overlay";
@@ -178,6 +182,16 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
   function openPage(id: string) {
     setHashParam("page", id, "replace");
     void loadPage(id);
+  }
+
+  function writingPagesSorted() {
+    const items = allPages.filter(
+      (p) => p.kind === "md" && (p.id.startsWith("writing/") || p.id.startsWith("blog/")),
+    );
+
+    // Favor naming conventions like `00_`, `01_`, or `YYYY-MM-DD_` by sorting by source path descending.
+    items.sort((a, b) => (b.srcPath || b.id).localeCompare(a.srcPath || a.id));
+    return items;
   }
 
   let theme: Theme = getInitialTheme();
@@ -276,11 +290,9 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
 
     const recent = document.createElement("div");
     recent.className = "tui-recent";
-    recent.appendChild(createTuiLine("$ ls content/writing", "plain"));
+    recent.appendChild(createTuiLine("$ ls content/writing | head -n 2", "plain"));
 
-    const writingPages = allPages.filter(
-      (p) => p.kind === "md" && (p.id.startsWith("writing/") || p.id.startsWith("blog/")),
-    );
+    const writingPages = writingPagesSorted();
 
     const list = document.createElement("div");
     list.className = "tui-recent-list";
@@ -288,7 +300,7 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     if (!writingPages.length) {
       list.appendChild(createTuiLine("No writing pages yet. Add markdown in content/writing/.", "muted"));
     } else {
-      for (const p of writingPages.slice(0, 5)) {
+      for (const p of writingPages.slice(0, 2)) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "tui-link";
@@ -299,6 +311,14 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     }
 
     recent.appendChild(list);
+
+    const seeAll = document.createElement("button");
+    seeAll.type = "button";
+    seeAll.className = "tui-link";
+    seeAll.textContent = "> see all";
+    seeAll.addEventListener("click", () => openPage("writing"));
+    recent.appendChild(seeAll);
+
     rootEl.appendChild(recent);
 
     const tip = document.createElement("div");
@@ -307,6 +327,38 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     tip.appendChild(createTuiLine("Scene: Left/Right arrows cycle POIs. Esc closes overlay.", "muted"));
     rootEl.appendChild(tip);
 
+    md.appendChild(rootEl);
+  }
+
+  function renderWritingIndex() {
+    md.classList.add("md-home");
+    md.innerHTML = "";
+
+    const rootEl = document.createElement("div");
+    rootEl.className = "tui";
+
+    rootEl.appendChild(createTuiLine("$ ls content/writing", "plain"));
+    rootEl.appendChild(createTuiLine("Tap a file to open. Use [h] home (top-right).", "muted"));
+
+    const list = document.createElement("div");
+    list.className = "tui-index-list";
+
+    const writingPages = writingPagesSorted();
+    if (!writingPages.length) {
+      list.appendChild(createTuiLine("No writing pages yet. Add markdown in content/writing/.", "muted"));
+    } else {
+      for (const p of writingPages) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tui-link";
+        const prettyPath = (p.srcPath || "").replace(/^\/content\//, "content/");
+        btn.textContent = `- ${prettyPath || p.title}`;
+        btn.addEventListener("click", () => openPage(p.id));
+        list.appendChild(btn);
+      }
+    }
+
+    rootEl.appendChild(list);
     md.appendChild(rootEl);
   }
 
@@ -332,6 +384,12 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
       if (page.kind === "home") {
         if (seq !== loadSeq) return;
         renderHome();
+        return;
+      }
+
+      if (page.kind === "writing") {
+        if (seq !== loadSeq) return;
+        renderWritingIndex();
         return;
       }
 
