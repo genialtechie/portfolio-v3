@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { inject as injectVercelAnalytics } from "@vercel/analytics";
+import { injectSpeedInsights } from "@vercel/speed-insights";
 
 type Poi = {
   id: string;
@@ -22,6 +24,10 @@ const poiLabel = qs<HTMLSpanElement>("#poi-label");
 const overlayRoot = qs<HTMLDivElement>("#overlay-root");
 const annotationLayer = qs<HTMLDivElement>("#annotation-layer");
 const appRoot = qs<HTMLDivElement>("#app");
+
+// Vercel Web Analytics + Speed Insights (no-op locally; active on Vercel deployments).
+injectVercelAnalytics();
+injectSpeedInsights();
 
 function createAnnotation() {
   const el = document.createElement("div");
