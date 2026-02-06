@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>portfolio-v3</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="c" aria-label="3D portfolio scene"></canvas>
+
+      <div id="hud" aria-live="polite">
+        <div id="hud-left">
+          <button id="prev" type="button">Prev</button>
+          <button id="next" type="button">Next</button>
+          <span id="poi-label"></span>
+        </div>
+        <div id="hud-right">
+          <button id="help" type="button" aria-haspopup="dialog">?</button>
+        </div>
+      </div>
+
+      <div id="annotation-layer" aria-hidden="true"></div>
+
+      <div id="overlay-root" hidden></div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+
