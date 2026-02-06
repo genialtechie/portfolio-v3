@@ -146,6 +146,13 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
   themeBtn.setAttribute("aria-label", "Toggle theme");
   titlebarRight.appendChild(themeBtn);
 
+  const homeBtn = document.createElement("button");
+  homeBtn.type = "button";
+  homeBtn.className = "nav-home";
+  homeBtn.setAttribute("aria-label", "Go to home");
+  homeBtn.textContent = "[h] home";
+  titlebarRight.appendChild(homeBtn);
+
   titlebar.appendChild(traffic);
   titlebar.appendChild(title);
   titlebar.appendChild(titlebarRight);
@@ -189,6 +196,8 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
   }
   themeBtn.addEventListener("click", toggleTheme);
   applyTheme(theme);
+
+  homeBtn.addEventListener("click", () => openPage("home"));
 
   function renderHome() {
     md.classList.add("md-home");
@@ -334,7 +343,15 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
       header.className = "tui tui-md-head";
       const prettyPath = (page.srcPath || "").replace(/^\/content\//, "content/");
       header.appendChild(createTuiLine(`$ cat ${prettyPath || page.title}`, "plain"));
-      header.appendChild(createTuiLine("Keys: [h] home, [t] theme, [esc] close", "muted"));
+      const isCoarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+      header.appendChild(
+        createTuiLine(
+          isCoarse
+            ? "Tap: use [h] home (top-right). [t] toggles theme. [esc] closes."
+            : "Keys: [h] home, [t] theme, [esc] close",
+          "muted",
+        ),
+      );
       md.appendChild(header);
 
       const article = document.createElement("div");

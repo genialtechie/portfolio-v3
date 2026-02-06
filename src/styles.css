@@ -157,6 +157,7 @@ button:active {
   font-size: 14px;
   line-height: 1.45;
   font-variant-ligatures: none;
+  color: var(--term-fg);
 
   --term-bg: #0b0c10;
   --term-fg: rgba(233, 236, 242, 0.92);
@@ -279,7 +280,9 @@ button:active {
 
 .theme-toggle {
   font-size: 12px;
-  color: var(--term-muted);
+  color: var(--term-fg);
+  opacity: 0.78;
+  font-weight: 600;
   padding: 6px 8px;
   cursor: pointer;
   white-space: nowrap;
@@ -287,7 +290,29 @@ button:active {
 
 .theme-toggle:hover {
   color: var(--term-fg);
+  opacity: 1;
   text-decoration: underline;
+}
+
+.nav-home {
+  font-size: 12px;
+  color: var(--term-fg);
+  opacity: 0.78;
+  font-weight: 600;
+  padding: 6px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nav-home:hover {
+  color: var(--term-fg);
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.macos-overlay[data-theme="light"] .theme-toggle,
+.macos-overlay[data-theme="light"] .nav-home {
+  opacity: 0.9;
 }
 
 .macos-body {
@@ -467,6 +492,10 @@ button:active {
   .theme-toggle {
     padding: 10px 10px;
   }
+
+  .nav-home {
+    padding: 10px 10px;
+  }
 }
 
 @media (max-width: 420px) {
@@ -479,6 +508,11 @@ button:active {
   }
 
   .theme-toggle {
+    font-size: 11px;
+    padding: 8px 6px;
+  }
+
+  .nav-home {
     font-size: 11px;
     padding: 8px 6px;
   }
