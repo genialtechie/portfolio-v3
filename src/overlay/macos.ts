@@ -235,12 +235,10 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
       { id: "writing", title: "writing", desc: "Posts and notes (content/writing/).", shortcut: "2" },
       { id: "about", title: "about", desc: "Short bio, skills, interests.", shortcut: "3" },
       { id: "contact", title: "contact", desc: "Where to reach me.", shortcut: "4" },
-      { id: "resume", title: "resume", desc: "Condensed resume.", shortcut: "5" },
     ];
 
     const pageIds = new Set(allPages.map((p) => p.id));
-    const hasAnyWriting = allPages.some((p) => p.id.startsWith("writing/") || p.id.startsWith("blog/"));
-    const canOpen = (id: string) => pageIds.has(id) || (id === "writing" && hasAnyWriting);
+    const canOpen = (id: string) => pageIds.has(id);
 
     for (const c of cards) {
       const btn = document.createElement("button");
@@ -252,12 +250,6 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
       btn.disabled = !enabled;
       btn.addEventListener("click", () => {
         if (!enabled) return;
-
-        if (c.id === "writing" && !pageIds.has("writing")) {
-          const firstWriting = allPages.find((p) => p.id.startsWith("writing/") || p.id.startsWith("blog/"));
-          if (firstWriting) openPage(firstWriting.id);
-          return;
-        }
 
         openPage(c.id);
       });
@@ -273,17 +265,21 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     const indexList = document.createElement("div");
     indexList.className = "tui-index-list";
 
-    const mdPages = allPages.filter((p) => p.kind === "md");
-    for (const p of mdPages) {
+    const curated: Array<{ id: string; label: string }> = [
+      { id: "projects", label: "- 01_projects.md" },
+      { id: "about", label: "- 02_about.md" },
+      { id: "contact", label: "- 03_contact.md" },
+      { id: "writing", label: "- writing/" },
+    ];
+
+    for (const item of curated) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "tui-link";
-      const prettyPath = (p.srcPath || "").replace(/^\/content\//, "content/");
-      btn.textContent = `- ${prettyPath || p.title}`;
-      btn.addEventListener("click", () => openPage(p.id));
+      btn.textContent = item.label;
+      btn.addEventListener("click", () => openPage(item.id));
       indexList.appendChild(btn);
     }
-    if (!mdPages.length) indexList.appendChild(createTuiLine("(empty)", "muted"));
 
     index.appendChild(indexList);
     rootEl.appendChild(index);
@@ -323,7 +319,7 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
 
     const tip = document.createElement("div");
     tip.className = "tui-tip";
-    tip.appendChild(createTuiLine("Keys: [h] home, [1-5] open section, [t] theme toggle.", "good"));
+    tip.appendChild(createTuiLine("Keys: [h] home, [1-4] open section, [t] theme toggle.", "good"));
     tip.appendChild(createTuiLine("Scene: Left/Right arrows cycle POIs. Esc closes overlay.", "muted"));
     rootEl.appendChild(tip);
 
@@ -448,7 +444,6 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     if (e.key === "2") openPage("writing");
     if (e.key === "3") openPage("about");
     if (e.key === "4") openPage("contact");
-    if (e.key === "5") openPage("resume");
   };
   window.addEventListener("keydown", onKeyDown);
 
