@@ -1,28 +1,28 @@
 # Colophon
 
-How this site is built, and why.
+A quick look at how this site is built.
 
 ## The idea
 
-The room is the homepage, and the MacBook is where everything lives. You boot into the Mac, pull back into the room, and go back into the screen to read. The whole site speaks one language: a terminal.
+The room is the homepage and the MacBook is where everything lives. When the site loads you start inside the Mac, then pull back into the room, and you go back into the screen whenever you want to read something. I kept everything looking and feeling like a terminal.
 
-## Rules I held it to
+## The rules I set for myself
 
-- **No framework in the critical path.** The 3D scene is plain TypeScript and three.js. The portfolio overlay is a separate chunk that loads only when you open the Mac.
-- **Render on demand.** There's no permanent animation loop. Frames are drawn only when something changes: camera moves, your input, a loading step.
-- **Honest loading.** The boot log prints real events with real numbers from your device: GPU, bytes downloaded, shader compile time. Nothing is faked.
-- **Correct color, careful memory.** Proper sRGB/linear handling, capped pixel ratio, and disposal of everything that leaves the scene.
-- **Accessible by default.** Real buttons, keyboard control for everything (arrows, 1/2, Enter, Esc, ?), focus handling in dialogs, and reduced-motion support.
-- **The URL is the state.** Every stop and page has a deep link, and back/forward work.
+- **No framework slowing down the first load.** The 3D scene is plain TypeScript and three.js. The portfolio part only loads when you open the Mac.
+- **Only draw when something changes.** There's no animation loop running all the time. A new frame only renders when the camera moves, you interact, or something is loading.
+- **Real loading info.** The boot screen shows actual numbers from your device, like your GPU, how much has downloaded, and how long the shaders took to compile.
+- **Careful with color and memory.** Correct color handling, a cap on pixel density, and cleaning up anything that leaves the scene.
+- **Works without a mouse.** Everything has a keyboard shortcut (arrows, 1 and 2, Enter, Esc, ?), dialogs handle focus properly, and it respects reduced motion settings.
+- **Every page has a link.** Every stop and page has its own URL, and back and forward work like you'd expect.
 
-## Things I measured
+## Some numbers
 
-- The scene went from **25.0 MB to 12.7 MB** with no visible change. Every texture was measured before anything was dropped ([write-up](#page=writing/scene-diet)).
-- Camera limits come from **rendering about 1,700 candidate views** and rejecting any that showed empty space ([write-up](#page=writing/camera-bounds)).
-- The Mac's screen is a real texture in the scene, redrawn only when its text changes.
+- The 3D scene went from 25.0 MB to 12.7 MB without any visible change ([how I did it](#page=writing/scene-diet)).
+- The camera limits came from rendering about 1,700 different views and throwing out any that showed empty space ([how I did it](#page=writing/camera-bounds)).
+- The Mac's screen is a real texture in the scene, and it only redraws when the text on it changes.
 
 ## Stack
 
-TypeScript · three.js · Vite · marked · Vercel (+ Analytics) · gltf-transform for the asset pipeline
+TypeScript · three.js · Vite · marked · Vercel and Vercel Analytics · gltf-transform for the 3D files
 
-3D models are CC BY 4.0. Credits are under `?` in the room.
+The 3D models are CC BY 4.0. You can find the credits under `?` in the room.

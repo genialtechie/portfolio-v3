@@ -1,40 +1,42 @@
 # Magpollo
 
-`Jan 2023–present · co-founder · 34 production applications`
+`Jan 2023 to now · co-founder · 34 production apps`
 
-Magpollo is the studio I co-founded. I lead technical and commercial delivery: finding and qualifying the work, discovery with the operator, solution architecture, scoping and proposals, and then staying accountable through the build and production support. It has shipped 34 production applications. Clients aren't named here; a few representative builds:
+Magpollo is the software studio I co-founded. I lead both the technical and commercial side, so I'm involved from the start: finding the work, sitting down with the business owner to understand the problem, designing the solution, writing the proposal, and then staying on through the build and production support. We've shipped 34 production apps so far.
 
-## AI systems for a real-estate operator
+I don't name our clients here, but here are a few examples of the work.
 
-A nine-figure real-estate operator came with a vague operations problem. I took it to a signed AI systems engagement.
+## AI systems for a real estate operator
 
-- **Mapped the real workflow first:** five people doing outreach by hand.
-- **Kept AI where it belongs:** contact rules stay deterministic, while classification and drafting use AI. A human approves anything that goes out.
-- **Fit their existing tools:** integrations designed around their Google Sheets, Gmail and Luma, instead of a new system to learn.
+A nine-figure real estate company came to us with a messy operations problem, and I took it from there to a signed AI systems engagement.
 
-## A youth-culture media platform
+- I started by mapping how the work actually got done: five people doing outreach by hand.
+- I kept the rules for who gets contacted, and when, as plain code, and only used AI for sorting and drafting messages. A person approves everything before it goes out.
+- I designed it around the tools they already use (Google Sheets, Gmail and Luma), so the team doesn't have to learn a new system.
 
-A publication with articles, video, events and a daily music game, running on a headless CMS.
+## A youth culture media platform
 
-- **Content that updates without a rebuild.** Publishing in Strapi triggers a signed webhook, and only the affected pages revalidate.
-- **Moving off WordPress without losing anything.** A migration script carried posts and images over into the new CMS (153 posts), and could resume after a failure instead of starting over.
-- **A daily music game.** A Spotify-backed daily song chosen deterministically from the date, so every reader gets the same puzzle, with game state saved locally and a pass-the-phone mode.
+A publication with articles, videos, events and a daily music game, all running on a headless CMS.
+
+- When an editor publishes in Strapi, a signed webhook tells the site to refresh only the pages that changed, with no full rebuild.
+- I wrote a script to move all their old WordPress posts and images into the new CMS (153 posts). If it failed partway through, it could pick up where it left off.
+- The music game picks a daily song from Spotify based on the date, so everyone gets the same puzzle that day. Your progress saves on your device, and there's a pass the phone mode.
 
 Next.js · Strapi · PostgreSQL · Cloudinary
 
 ## Events, tickets and awards for an entertainment company
 
-About two years of work for one company: event teasers, a ticketing backend, and awards voting.
+We've worked with this company for about two years on event teasers, a ticketing backend, and awards voting.
 
-- **Voting that's hard to game:** one vote per device per category, bot checks with Cloudflare Turnstile, and rate limits with Upstash.
-- **Content editors can run it themselves:** events, series, media, award years and nominees are all modeled in the CMS.
+- Voting is built to be hard to cheat: one vote per device per category, Cloudflare Turnstile to block bots, and rate limits with Upstash.
+- Their team can run everything from the CMS, including events, series, media, award years and nominees.
 
 Next.js · Strapi · Sanity · Supabase · Upstash · Turnstile
 
 ## Custom commerce
 
-The 3D configurator and store, covered in its own case study: **[Custom commerce](#page=projects/custom-commerce)**.
+The 3D configurator and store has its own write-up: **[Custom commerce](#page=projects/custom-commerce)**.
 
-## How I run client work
+## How we work
 
-Fixed-scope blueprints before builds, small teams, and productizing a pattern only once several clients need it. The internal tools follow the same rule: lead capture, analytics and proof-of-work pages, built when needed and not before.
+We scope things with a fixed blueprint before we build, keep teams small, and only turn something into a reusable product once a few clients actually need it. Our internal tools follow the same rule.

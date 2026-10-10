@@ -2,38 +2,38 @@
 
 `2026 · iOS (Expo / React Native) · Supabase · solo · in App Store review`
 
-A prayer app built around friends rather than willpower. You confirm each of the five daily prayers (optionally with a photo), keep a private history, and see your friends' streaks so you keep each other consistent. Missing a prayer never wipes your progress, and nothing in the app shames you.
+Imaan is a prayer app built around friends. You confirm each of the five daily prayers (with a photo if you want), keep a private history, and see your friends' streaks so you all keep each other consistent. If you miss a prayer you don't lose your progress, and the app never tries to make you feel bad about it.
 
-## The problem
+## Why I built it
 
-Prayer trackers mostly work like habit trackers: a streak that resets to zero and makes you feel bad. I wanted accountability that feels like a group chat with good friends. That meant small circles, invite-only, no public leaderboard, and copy that encourages instead of scolds.
+Most prayer trackers work like habit trackers. You build a streak, miss one day, and it resets to zero. I wanted something that feels more like a group chat with good friends. So it's small circles, invite only, no public leaderboard, and all the copy is encouraging.
 
-## What I built
+## What's in it
 
-- **Today:** five prayers, each confirmed with a tap or a photo from a live in-screen camera.
-- **Footprints:** a private calendar of your history, laid out like a photo library.
-- **Friends:** invite links only, day streaks next to names, nudges, and report/block.
-- **Utilities:** a Qiblah compass (great-circle bearing plus the device compass), a tasbih counter, and shareable progress cards.
-- **Reminders:** local notifications rescheduled whenever the day, the location or your confirmations change.
+- **Today:** the five prayers, each confirmed with a tap or a photo from a camera built right into the screen
+- **Footprints:** a private calendar of your history that looks like a photo library
+- **Friends:** invite links only, streaks next to everyone's name, nudges, and report and block
+- **Extras:** a Qiblah compass, a tasbih counter, and progress cards you can share
+- **Reminders:** local notifications that reschedule themselves whenever the day, your location or your confirmations change
 
-## Decisions worth explaining
+## How it works under the hood
 
-**Streaks are computed in SQL, not on the phone.** The current run is a "gaps and islands" query: the unbroken chain back from your latest confirmed prayer. The client sends its local date, so the server never needs to reason about the user's timezone. That's a deliberate, documented v1 simplification. The edge cases are written up as test cases, checked against a local Postgres 16 before the migration shipped.
+Streaks are calculated in SQL on the server. The current streak is a "gaps and islands" query, which basically finds the unbroken chain going back from your latest confirmed prayer. The phone sends its local date, so the server never has to figure out the user's timezone. I wrote that down as a known simplification for v1. I also wrote out the edge cases as test cases and checked them against a local Postgres 16 before shipping the migration.
 
-**Row-level security is enforced by the deploy, not by memory.** One migration fails if any public table is missing RLS. It caught a real gap on its first run: a legacy table that was still readable.
+I made the database itself enforce security. One migration fails if any public table is missing row-level security. The first time it ran, it actually caught a gap on an old table that was still readable.
 
-**Privacy-first friends.** Profiles are owner-only, so friends' names came through as raw IDs. Instead of loosening the table policy, I exposed exactly the fields friends need through a `SECURITY DEFINER` function. Photos live in a private bucket under per-user paths and are served through signed URLs that expire after an hour.
+Friends needed to see each other's names, but profiles are private by default, so at first names showed up as raw IDs. I didn't want to open up the whole table, so I added a small database function that only returns the fields a friend needs. Photos live in a private bucket under each user's folder, and the app shows them through links that expire after an hour.
 
-**Patching the native layer when the library was wrong.** The camera went blank after navigating away and back. The fix was in Expo's Swift camera session code, which I patched to rebuild the capture input and output on re-attach, and to report the error instead of showing an empty tile.
+I also had to patch the native code. The camera went blank if you navigated away and came back. The bug was in Expo's Swift camera code, so I patched it to rebuild the camera session when the view comes back, and to show an error instead of an empty box.
 
-**App Store review is a feature.** As a first-time developer account, the first submission came back under Guideline 2.1 (app completeness), and the demo content had to go. For the resubmission I added self-serve account deletion, report and block as a single atomic action (with a trigger that prevents re-friending) and one permission request per onboarding screen, then ran a smoke test with two live accounts.
+## Getting through App Store review
 
-## Status
+Since this was my first app on a new developer account, the first submission got rejected under Guideline 2.1 (app completeness), and I had to take out the demo content. For the resubmission I added account deletion, report and block (done as one action, with a rule that stops a blocked person from re-adding you), and one permission request per onboarding screen. Then I ran a full test with two real accounts before submitting again.
 
-Submitted to App Store review in October 2026 after a three-day launch sprint tracked in Linear.
+It's back in review now, after a three day launch sprint I tracked in Linear.
 
 <!-- TODO(haleem): add the review outcome and App Store link once approved. -->
 
 ## Stack
 
-Expo SDK 54 · React Native 0.81 (New Architecture) · expo-router · TypeScript · Reanimated · Supabase (Postgres, RLS, Storage, anonymous auth) · Aladhan prayer-times API · EAS Build & Submit
+Expo SDK 54 · React Native 0.81 (New Architecture) · expo-router · TypeScript · Reanimated · Supabase (Postgres, RLS, Storage, anonymous auth) · Aladhan prayer times API · EAS Build and Submit

@@ -2,27 +2,27 @@
 
 `2025 · archived · AI product · Next.js · Supabase · solo, about 7 weeks`
 
-Upload your resume, paste a job posting (or its URL), and see exactly how you stack up. Qualifies.me pulled out the role's key requirements, showed which ones your resume was missing, and suggested edits you could accept or reject one diff at a time. It also wrote cover letters and exported both documents as PDFs.
+You'd upload your resume, paste a job posting (or its link), and see how you stack up. Qualifies.me pulled out the job's key requirements, showed which ones your resume was missing, and suggested edits you could accept or reject one by one. It also wrote cover letters and exported both as PDFs.
 
-It's no longer running; the domain has lapsed. The engineering is still worth showing.
+It's not running anymore and the domain has expired, but I still think the engineering is worth showing.
 
 <!-- TODO(haleem): users/sign-ups if you have them, and why it stopped. Screenshot/recording tracked in Linear. -->
 
-## Decisions worth explaining
+## How I built it
 
-**Use the LLM first, but always have a fallback.** Resumes were parsed into structured JSON by an LLM, with a strict JSON schema enforced on the response. If the model failed, a hand-written parser took over: about 375 lines covering section-header synonyms, bullet styles and date ranges, with its own tests. If schema validation failed, the app filled in sensible defaults instead of erroring. Users got a usable result instead of a spinner and an apology.
+The LLM parses the resume first, and there's always a backup. The model turns the resume into structured JSON, with a strict schema it has to follow. If the model fails, a parser I wrote by hand takes over. It's about 375 lines that handle different section names, bullet styles and date formats, and it has its own tests. If the model's output doesn't match the schema, the app fills in sensible defaults so the user still gets a result.
 
-**"Don't make things up" is a requirement.** The tailoring prompt only allows suggestions grounded in the resume. Missing requirements must exactly match the extracted key requirements, and suggested skills are capped. If a reply came back cut off, it was treated as an error.
+I told the model not to make things up. It can only suggest edits based on what's already in the resume. The missing requirements have to match the extracted requirements exactly, and suggested skills are capped. If a response comes back cut off, it's treated as an error.
 
-**Metered usage instead of a paywall.** Every AI action cost credits (parse 1, tailor 3, cover letter 2), checked before the call. When credits ran out, the API returned a 429 instead of failing at random. A weekly GitHub Actions cron called a Supabase Edge Function to reset everyone's allowance. That kept LLM spend predictable without building billing.
+Every AI action costs credits (parse is 1, tailor is 3, cover letter is 2), and the app checks your balance before calling the model. If you're out, the API returns a 429 with a clear message. A weekly GitHub Actions job calls a Supabase Edge Function that resets everyone's credits. It kept my LLM costs predictable without building a whole billing system.
 
-**Swappable models.** The model is configuration, not code, so changing providers or tiers is a deploy, not a refactor.
+The model is just a setting, so switching providers or models is a quick config change.
 
-**Serverless sharp edges.** The pdf.js worker had to be copied into the public folder at install time to work in production. Long cover-letter generations hit function timeouts and had to be cut down. Neither shows up in tutorials.
+Serverless had a couple of surprises. The pdf.js worker had to be copied into the public folder at install time to work in production, and long cover letter generations kept hitting function timeouts until I cut them down.
 
 ## What I'd do differently
 
-Store the database schema as real migrations (it lived only in the dashboard), and track how often the fallback parser kicked in, because that number would have told me how much to trust the LLM path.
+I'd keep the database schema in real migration files, since it only lived in the Supabase dashboard. And I'd track how often the backup parser kicked in, because that number would have told me how much to trust the LLM.
 
 ## Stack
 

@@ -2,32 +2,32 @@
 
 `October 2026 · performance · three.js`
 
-The room you're standing in used to be a 25 MB download. On a fast connection that meant two seconds of a blank screen, and on a phone it meant much longer. It's now 12.7 MB, and the renders before and after are visually identical. Here's how, and why I didn't just reach for compression first.
+The room you're standing in used to be a 25 MB download. On a fast connection that was about two seconds of a blank screen, and on a phone it was a lot longer. It's now 12.7 MB, and if you compare before and after, it looks exactly the same. Here's how I did it.
 
-## Look before you squeeze
+## First, I looked inside the file
 
-I already thought I'd done a compression pass. The file said otherwise. Reading the glTF header showed no texture or mesh compression at all. Every texture was already capped at 1024px, so a resize *had* happened. But 16 MB of the file was PNG and JPEG textures, and 8.6 MB was raw geometry for only about 91k vertices.
+I thought I'd already compressed this scene. Turns out I hadn't. When I read the file's header, there was no texture or mesh compression at all. Every texture was already capped at 1024px, so I had done a resize at some point. But 16 MB of the file was still PNG and JPEG images, and 8.6 MB was raw geometry for only about 91k vertices.
 
-So the question wasn't "how do I compress this?" It was "what in here is actually doing anything?"
+So before compressing anything, I wanted to know which parts of the file were actually doing something.
 
-## Measure every texture
+## Then I measured every texture
 
-For each texture I computed the per-channel standard deviation. A normal map that's basically flat (deviation under 2 out of 255) adds nothing you can see, so it gets dropped. Two did, including the MacBook's. Roughness/metalness maps with low variance on stickers, rubber and screens became single constant values, set to the map's average so the overall look doesn't shift. Between them, those two steps removed six textures, about 4.8 MB.
+For each texture, I measured how much its pixels actually vary. A normal map that's basically flat doesn't change how anything looks, so I dropped those. Two were flat, including the MacBook's. A few roughness and metalness maps on the stickers, rubber and screens barely varied either, so I swapped each one for a single value set to its average. That way the overall look doesn't shift. Those two changes removed six textures, about 4.8 MB.
 
-Some I kept on purpose. The sticker and wall normal maps had real variation, so they'll be compressed properly instead of deleted.
+I kept some on purpose. The sticker and wall normal maps had real detail in them, so I'll compress those properly later.
 
-## The geometry surprise
+## The geometry was a surprise
 
-The MacBook was 93% of the scene's triangles, and every vertex carried five UV sets plus tangents. Two of those UV sets weren't used by any material, and the tangents only existed for the flat normal map I'd just removed. Pruning them took its mesh from **6.7 MB to 2.8 MB**. Nothing about how it looks changed; the data simply wasn't being used.
+The MacBook was 93% of all the triangles in the scene, and every vertex carried five sets of texture coordinates plus extra tangent data. Two of those coordinate sets weren't used by anything, and the tangents were only there for the flat normal map I had just removed. Removing them took the MacBook from 6.7 MB to 2.8 MB, and it looks exactly the same.
 
-## Make it repeatable
+## Making it repeatable
 
-The original export now lives in `assets/source/`, and a script (`npm run assets:optimize`) produces the file the site ships. The rules are code, not a one-off: the thresholds, the list of materials allowed to lose their maps, and the poster size (512px, since they're background now).
+The original export now lives in `assets/source/`, and a script (`npm run assets:optimize`) builds the file the site actually ships. All the rules are in code: the thresholds, which materials are allowed to lose their maps, and the poster size (512px, since they're just in the background now).
 
-I verified it by rendering three framings before and after in a headless browser and diffing the pixels. The mean differences were 0.0, 0.14 and 0.68 out of 255.
+To check nothing changed visually, I rendered three camera angles before and after in a headless browser and compared the pixels. The average difference was basically zero (0.0, 0.14 and 0.68 out of 255).
 
 ## What's next
 
-This pass needed no runtime changes, which made it safe to ship on its own. The next pass is the one that changes how the site loads: meshopt geometry compression and KTX2 textures. KTX2 matters for GPU memory, not just download size: 24 uncompressed 1024px textures with mipmaps take roughly 130 MB of video memory, and that's what crashes phone tabs.
+This pass didn't need any code changes, so it was safe to ship on its own. The next pass is real compression: meshopt for the geometry and KTX2 for the textures. KTX2 matters for more than download size. Right now 24 uncompressed 1024px textures take up roughly 130 MB of GPU memory, and that's the kind of thing that crashes tabs on phones.
 
 <!-- TODO(haleem): update with the KTX2/meshopt results when that pass lands. -->
