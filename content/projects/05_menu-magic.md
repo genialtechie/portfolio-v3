@@ -1,12 +1,10 @@
 # Menu Magic
 
-`2025–26 · archived prototype · AI image pipeline · Next.js · Fastify · ComfyUI`
+`2025–26 · archived · learning project · self-hosted AI image pipeline`
 
 Restaurants on delivery apps often have bad or missing food photos. Menu Magic took a DoorDash, Uber Eats, Grubhub or Shopify link, scraped the menu and its photos, and generated restyled, on-brand product shots in the sizes each platform needs. Scraping and setup were free; signing in was only required at the generate step.
 
-It reached a working end-to-end pipeline but never a public launch.
-
-<!-- TODO(haleem): confirm the reason it stopped (my read: GPU cost vs pricing). Any users or payments? -->
+Mostly, it was how I learned what's underneath AI products. Calling an API is easy. I wanted to know how these models are actually assembled, run and hosted. So instead of a hosted image API, I ran the model myself: my own workflow graph, my own custom node, my own server. It reached a working end-to-end pipeline, and then the server costs ended it, which taught me something too.
 
 ## How it was built
 
@@ -24,7 +22,7 @@ Three pieces, each with one job:
 
 **Hardened services.** Service-to-service auth, a CORS allowlist, rate limits, retries with backoff, and a throttled alert webhook for failures and slow jobs.
 
-**The honest constraint.** On CPU, generation needed 4 steps and roughly 512px images to be bearable. Production quality needed a GPU, and the economics of a GPU box didn't fit the price of an image pack yet. That's where it paused.
+**The constraint that ended it.** On CPU, generation needed 4 steps and roughly 512px images to be bearable. Production quality needed a GPU, and a GPU server didn't make financial sense at what an image pack could sell for. Hosting your own model versus paying per call is a trade-off you only really understand once you've paid the server bill.
 
 **Working with AI agents.** I split the build across named coding agents, each with its own git worktree and file ownership (scraper, generation, UI), and acted as the integrator. It worked well for parallel work and taught me where agents need tight boundaries.
 

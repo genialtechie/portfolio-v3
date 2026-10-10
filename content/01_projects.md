@@ -12,7 +12,7 @@ Products I built end to end, with the decisions behind them. Each one is a short
 - **[IMAAN](#page=projects/imaan)** · 2026 · iOS\
   A prayer app for keeping each other consistent with friends. Expo + Supabase, now in App Store review.
 - **[Custom commerce](#page=projects/custom-commerce)** · 2025–26 · web, 3D\
-  A 3D configurator and store for made-to-order grillz: per-tooth customization, live pricing, Stripe checkout. 5,000+ automated quotes. [Live demo](https://commerce.magpollo.com/watch).
+  A 3D configurator and store for made-to-order grillz: per-tooth customization, live pricing, Stripe checkout. 5,000+ automated quotes, five figures in revenue. [Live demo](https://commerce.magpollo.com/watch).
 - **[Hoopzy](#page=projects/hoopzy)** · 2025–26 · web game\
   A swipe-to-shoot basketball game with real physics. It's the arcade in this room. [Play it](https://hoopzy.fun).
 
@@ -23,7 +23,7 @@ Side projects that are no longer running. They're here for the engineering, and 
 - **[Qualifies.me](#page=projects/qualifies-me)** · 2025 · AI product\
   Resume tailoring against a job description, with LLM parsing, schema-checked output and usage metering.
 - **[Menu Magic](#page=projects/menu-magic)** · 2025–26 · AI pipeline\
-  Menu scraping plus generated product photos on a self-hosted image model. It reached a working pipeline, not a launch.
+  Menu scraping plus product photos from an image model I hosted myself. A project to learn how AI products are built and hosted, not just called.
 
 ## Client work
 

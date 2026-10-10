@@ -4,7 +4,7 @@
 
 ReviewTailor (the Career Companion product) helps people turn their real experience into career documents that hold up. I joined as founding engineer when it was a pre-user prototype. There was no shared repository and no way to ship it safely. I turned it into a production platform with a working engineering team around it.
 
-<!-- TODO(haleem): confirm you're comfortable describing this publicly at this level, and add a link if there's a public site. -->
+[careercompanion.reviewtailor.com](https://careercompanion.reviewtailor.com)
 
 ## From prototype to a team that can ship
 

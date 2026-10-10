@@ -21,11 +21,9 @@ Made-to-order jewelry is sold through DMs and screenshots. Customers describe wh
 ## Results
 
 - **5,000+ automated quotes** generated, each one a price the jeweler didn't have to calculate by hand.
-- **Five figures in sales** so far, and it's now a service Magpollo sells to multiple clients.
+- **Five figures in revenue for Magpollo** so far, as a productized service sold to multiple clients.
 - **Leads up more than 30%**, skewing toward high-ticket, high-intent buyers. A visual checkout is something the client can actually promote on Instagram.
 - **Far fewer "how much will this cost?" messages.** That one is anecdotal rather than measured.
-
-<!-- TODO(haleem): "five figures in sales": is that orders through the configurator, or Magpollo's revenue from the service? Reword to whichever is accurate. -->
 
 ## Decisions worth explaining
 
