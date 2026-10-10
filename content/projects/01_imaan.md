@@ -4,7 +4,7 @@
 
 A prayer app built around friends rather than willpower. You confirm each of the five daily prayers (optionally with a photo), keep a private history, and see your friends' streaks so you keep each other consistent. Missing a prayer never wipes your progress, and nothing in the app shames you.
 
-<!-- TODO(haleem): confirm "solo" and add the App Store link once approved. -->
+<!-- TODO(haleem): confirm "solo". -->
 
 ## The problem
 
@@ -28,13 +28,13 @@ Prayer trackers mostly work like habit trackers: a streak that resets to zero an
 
 **Patching the native layer when the library was wrong.** The camera went blank after navigating away and back. The fix was in Expo's Swift camera session code, which I patched to rebuild the capture input and output on re-attach, and to report the error instead of showing an empty tile.
 
-**App Store review is a feature.** The first submission came back under Guideline 2.1. For the resubmission I added self-serve account deletion, report and block as a single atomic action (with a trigger that prevents re-friending) and one permission request per onboarding screen, then ran a smoke test with two live accounts.
+**App Store review is a feature.** As a first-time developer account, the first submission came back under Guideline 2.1 (app completeness), and the demo content had to go. For the resubmission I added self-serve account deletion, report and block as a single atomic action (with a trigger that prevents re-friending) and one permission request per onboarding screen, then ran a smoke test with two live accounts.
 
 ## Status
 
 Submitted to App Store review in October 2026 after a three-day launch sprint tracked in Linear.
 
-<!-- TODO(haleem): add review outcome, TestFlight tester count, any early numbers. -->
+<!-- TODO(haleem): add the review outcome and App Store link once approved. -->
 
 ## Stack
 

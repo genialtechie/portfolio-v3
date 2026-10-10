@@ -423,7 +423,7 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
             e.preventDefault();
             openPage(decodeURIComponent(href.slice("#page=".length)));
           });
-        } else if (/^https?:\/\//.test(href)) {
+        } else if (/^https?:\/\//.test(href) || href.startsWith("/")) {
           a.target = "_blank";
           a.rel = "noopener noreferrer";
         }

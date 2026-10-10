@@ -1,10 +1,16 @@
 # Magpollo
 
-`2023–present · co-founder, engineering · client work for small and owner-led businesses`
+`Jan 2023–present · co-founder · 34 production applications`
 
-Magpollo is the studio I co-founded. I lead the engineering: scoping, building and running production systems for businesses that don't have their own engineering team. A few representative builds:
+Magpollo is the studio I co-founded. I lead technical and commercial delivery: finding and qualifying the work, discovery with the operator, solution architecture, scoping and proposals, and then staying accountable through the build and production support. It has shipped 34 production applications. Clients aren't named here; a few representative builds:
 
-<!-- TODO(haleem): confirm which clients can be named publicly. Until then these are described, not named. Also confirm the project count; I found ~10 engagements in your code folder, so "30+" needs backing or softening. Confirm "I lead the engineering" (every client repo commit is yours) and Charles's role. -->
+## AI systems for a real-estate operator
+
+A nine-figure real-estate operator came with a vague operations problem. I took it to a signed AI systems engagement.
+
+- **Mapped the real workflow first:** five people doing outreach by hand.
+- **Kept AI where it belongs:** contact rules stay deterministic, while classification and drafting use AI. A human approves anything that goes out.
+- **Fit their existing tools:** integrations designed around their Google Sheets, Gmail and Luma, instead of a new system to learn.
 
 ## A youth-culture media platform
 

@@ -1,16 +1,14 @@
 # Custom commerce
 
-`2025–26 · web · three.js / React Three Fiber · Next.js · Stripe · client work through Magpollo`
+`2025–26 · web · three.js / React Three Fiber · Next.js · Stripe · Magpollo product, sold to multiple clients`
 
 A 3D configurator and store for custom grillz (dental jewelry). The customer picks individual teeth on a 3D model, then chooses metal, finish, plain or iced-out stones, and cut, and watches the price update as they go. When they check out, the jeweler receives an order they can build from without a single back-and-forth message.
 
 [Watch the demo](https://commerce.magpollo.com/watch) · [Try the configurator](https://commerce.magpollo.com/configurator)
 
-<!-- TODO(haleem): confirm the "sold over DMs" framing matches the client. Can the client brand be named? Add live store URL, order volume or revenue if shareable. -->
-
 ## The problem
 
-Made-to-order jewelry is sold over Instagram DMs. Customers describe what they want, the jeweler quotes by hand, and details get lost between "gold on the top six" and what actually gets made. The goal was to replace that conversation with a page: guided choices, a live price, and an order spec the workshop can use directly.
+Made-to-order jewelry is sold through DMs and screenshots. Customers describe what they want, the jeweler quotes by hand, and details get lost between "gold on the top six" and what actually gets made. The goal was to replace that conversation with a page: guided choices, a live price, and an order spec the workshop can use directly.
 
 ## What I built
 
@@ -19,6 +17,15 @@ Made-to-order jewelry is sold over Instagram DMs. Customers describe what they w
 - **Checkout and orders.** Stripe Checkout (card, Affirm, Klarna), Postgres via Prisma, and a signed webhook that marks orders paid.
 - **Support built in.** Customer chat lands in the shop's Telegram: each customer gets their own forum topic, and replies flow back to the site.
 - **A public demo** on Magpollo's site, with a funnel tracked step by step in PostHog.
+
+## Results
+
+- **5,000+ automated quotes** generated, each one a price the jeweler didn't have to calculate by hand.
+- **Five figures in sales** so far, and it's now a service Magpollo sells to multiple clients.
+- **Leads up more than 30%**, skewing toward high-ticket, high-intent buyers. A visual checkout is something the client can actually promote on Instagram.
+- **Far fewer "how much will this cost?" messages.** That one is anecdotal rather than measured.
+
+<!-- TODO(haleem): "five figures in sales": is that orders through the configurator, or Magpollo's revenue from the service? Reword to whichever is accurate. -->
 
 ## Decisions worth explaining
 
