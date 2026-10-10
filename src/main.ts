@@ -123,11 +123,55 @@ function getHashParam(key: string) {
 // The guided tour. Other POI_*_ANCHOR nodes in the scene (posters) are set
 // dressing: present in the room, not stops in the tour.
 // `hint` is the in-scene label; the Mac has none because its screen says it.
-const TOUR: { id: string; label: string; verb: string; external?: boolean; hint: string | null }[] = [
-  { id: "mac", label: "portfolio", verb: "open", hint: null },
-  { id: "arcade", label: "hoopzy", verb: "play", external: true, hint: "hoopzy · play ↗" },
+// `orbit` bounds keep the camera inside the room and looking at walls, never at
+// the empty space around the model. Azimuth is relative to the stop's rest
+// view (degrees), polar is absolute (degrees from straight down), distance is
+// a factor of the rest distance. Measured with an automated sweep that renders
+// each candidate view and rejects any that show more empty background than
+// the rest view, or put the camera outside the room / above the walls.
+type OrbitBounds = { azimuth: [number, number]; polar: [number, number]; distance: [number, number] };
+const TOUR: {
+  id: string;
+  label: string;
+  verb: string;
+  external?: boolean;
+  hint: string | null;
+  /** `wide` for landscape screens (aspect >= 1.3), `narrow` for tall/square ones. */
+  orbit: { wide: OrbitBounds; narrow: OrbitBounds };
+}[] = [
+  {
+    id: "mac",
+    label: "portfolio",
+    verb: "open",
+    hint: null,
+    orbit: {
+      wide: { azimuth: [-40, 10], polar: [60, 85], distance: [0.8, 1.2] },
+      narrow: { azimuth: [-20, 10], polar: [70, 85], distance: [0.9, 1.2] },
+    },
+  },
+  {
+    id: "arcade",
+    label: "hoopzy",
+    verb: "play",
+    external: true,
+    hint: "hoopzy · play ↗",
+    orbit: {
+      wide: { azimuth: [-25, 35], polar: [50, 85], distance: [0.6, 1.2] },
+      narrow: { azimuth: [-25, 30], polar: [60, 80], distance: [0.6, 1.1] },
+    },
+  },
 ];
 const HOOPZY_URL = "https://hoopzy.fun";
+
+/** three.js sanitizes node names ("macbook.glb" -> "macbookglb"), so match loosely. */
+function findNode(root: THREE.Object3D, name: string) {
+  const want = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  let found: THREE.Object3D | null = null;
+  root.traverse((o) => {
+    if (!found && (o.name || "").toLowerCase().replace(/[^a-z0-9]/g, "") === want) found = o;
+  });
+  return found as THREE.Object3D | null;
+}
 
 function findPois(root: THREE.Object3D): Poi[] {
   const anchors = new Map<string, THREE.Object3D>();
@@ -230,6 +274,7 @@ function zoomIntoScreen() {
       toPos: pose.pos,
       toTarget: pose.target,
       onDone: resolve,
+      free: true,
     };
     requestRenderIfNotRequested(render);
   });
@@ -279,10 +324,9 @@ controls.enableDamping = false;
 controls.enabled = false;
 controls.enablePan = false;
 controls.enableZoom = true;
-controls.minDistance = 0.6;
-controls.maxDistance = 3.2;
-controls.minPolarAngle = Math.PI * 0.18;
-controls.maxPolarAngle = Math.PI * 0.55;
+// Per-stop limits are applied in applyOrbitBounds() when the camera arrives.
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.6;
 controls.addEventListener("change", () => requestRenderIfNotRequested(render));
 controls.addEventListener("start", () => hints.followed("orbit"));
 
@@ -505,6 +549,8 @@ let transition:
       toPos: THREE.Vector3;
       toTarget: THREE.Vector3;
       onDone?: () => void;
+      /** Camera ends outside the orbit range (screen close-up): don't hand back to OrbitControls. */
+      free?: boolean;
     }
   | null = null;
 
@@ -534,6 +580,21 @@ function poiPose(poi: Poi) {
   return { target, camPos, dirToCenter };
 }
 
+/** Constrain OrbitControls around this stop's rest view. */
+function applyOrbitBounds(poi: Poi, target: THREE.Vector3, camPos: THREE.Vector3) {
+  const set = tourEntry(poi.id)?.orbit;
+  if (!set) return;
+  const b = camera.aspect >= 1.3 ? set.wide : set.narrow;
+  const rest = new THREE.Spherical().setFromVector3(camPos.clone().sub(target));
+  const rad = THREE.MathUtils.degToRad;
+  controls.minAzimuthAngle = rest.theta + rad(b.azimuth[0]);
+  controls.maxAzimuthAngle = rest.theta + rad(b.azimuth[1]);
+  controls.minPolarAngle = Math.min(rest.phi, rad(b.polar[0]));
+  controls.maxPolarAngle = Math.max(rest.phi, rad(b.polar[1]));
+  controls.minDistance = rest.radius * b.distance[0];
+  controls.maxDistance = rest.radius * b.distance[1];
+}
+
 function focusOnPoi(poi: Poi, opts: { durationMs?: number } = {}) {
   if (!gltfRoot) return;
 
@@ -541,6 +602,7 @@ function focusOnPoi(poi: Poi, opts: { durationMs?: number } = {}) {
   const { target, camPos } = poiPose(poi);
 
   controls.enabled = false;
+  applyOrbitBounds(poi, target, camPos);
 
   // Anything awaiting the interrupted transition shouldn't hang.
   transition?.onDone?.();
@@ -694,11 +756,13 @@ function render() {
     camera.lookAt(controls.target);
 
     if (t >= 1) {
-      const done = transition.onDone;
+      const { onDone: done, free } = transition;
       transition = null;
-      controls.update();
-      controls.enabled = overlayRoot.hidden;
-      if (overlayRoot.hidden) armOrbitHint();
+      if (!free) {
+        controls.update();
+        controls.enabled = overlayRoot.hidden;
+        if (overlayRoot.hidden) armOrbitHint();
+      }
       done?.();
     } else {
       requestRenderIfNotRequested(render);
@@ -824,7 +888,7 @@ async function init() {
 
   // Click/hover targets for the tour stops.
   gltfRoot.updateMatrixWorld(true);
-  const arcadeRoot = gltfRoot.getObjectByName("final_fight_arcade.glb");
+  const arcadeRoot = findNode(gltfRoot, "final_fight_arcade.glb");
   for (const [id, obj] of [["mac", macRoot], ["arcade", arcadeRoot]] as const) {
     if (obj && pois.some((p) => p.id === id)) hitTargets.push({ id, box: new THREE.Box3().setFromObject(obj) });
   }
