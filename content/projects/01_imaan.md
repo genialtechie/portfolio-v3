@@ -1,10 +1,8 @@
-# IMAAN
+# Imaan
 
-`2026 · iOS (Expo / React Native) · Supabase · in App Store review`
+`2026 · iOS (Expo / React Native) · Supabase · solo · in App Store review`
 
 A prayer app built around friends rather than willpower. You confirm each of the five daily prayers (optionally with a photo), keep a private history, and see your friends' streaks so you keep each other consistent. Missing a prayer never wipes your progress, and nothing in the app shames you.
-
-<!-- TODO(haleem): confirm "solo". -->
 
 ## The problem
 

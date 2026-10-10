@@ -6,7 +6,7 @@ Upload your resume, paste a job posting (or its URL), and see exactly how you st
 
 It's no longer running; the domain has lapsed. The engineering is still worth showing.
 
-<!-- TODO(haleem): users/sign-ups if you have them; why it stopped; a screenshot or short screen recording would help a lot since there's no live link. -->
+<!-- TODO(haleem): users/sign-ups if you have them, and why it stopped. Screenshot/recording tracked in Linear. -->
 
 ## Decisions worth explaining
 

@@ -20,8 +20,8 @@ A 60-second basketball game: touch the ball, swipe up, and let real physics carr
 
 It's going inside this arcade cabinet. A shared leaderboard would need server-side score checks, because the best score lives only in the browser today.
 
-<!-- TODO(haleem): were the music and SFX made by you or licensed? -->
-
 ## Stack
 
 three.js · Ammo.js via enable3d (WebAssembly) · Vite · vanilla JavaScript · Vercel
+
+Sound effects are my own, plus free-to-use sources.

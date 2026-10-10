@@ -9,7 +9,7 @@ Products I built end to end, with the decisions behind them. Each one is a short
 
 ## Shipping
 
-- **[IMAAN](#page=projects/imaan)** · 2026 · iOS\
+- **[Imaan](#page=projects/imaan)** · 2026 · iOS\
   A prayer app for keeping each other consistent with friends. Expo + Supabase, now in App Store review.
 - **[Custom commerce](#page=projects/custom-commerce)** · 2025–26 · web, 3D\
   A 3D configurator and store for made-to-order grillz: per-tooth customization, live pricing, Stripe checkout. 5,000+ automated quotes, five figures in revenue. [Live demo](https://commerce.magpollo.com/watch).
