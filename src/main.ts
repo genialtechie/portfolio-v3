@@ -42,8 +42,14 @@ const sound = createSound((on) => {
   renderSoundButton(on);
   track("sound_toggle", { on });
 });
+// Speaker icon: sound waves when on, a cross when off.
+const SPEAKER = `<path d="M3 9.5h3.5L11 5.5v13l-4.5-4H3z" fill="currentColor" stroke="none"/>`;
+const WAVES = `<path d="M14.5 9a4 4 0 0 1 0 6M17 6.5a7.5 7.5 0 0 1 0 11"/>`;
+const CROSS = `<path d="M15 9.5l5 5M20 9.5l-5 5"/>`;
 function renderSoundButton(on: boolean) {
-  soundBtn.textContent = on ? "♪ on" : "♪ off";
+  soundBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${SPEAKER}${on ? WAVES : CROSS}</svg><span>${on ? "on" : "off"}</span>`;
+  soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  soundBtn.title = on ? "Sound on" : "Sound off";
   soundBtn.setAttribute("aria-pressed", String(on));
   soundBtn.classList.toggle("is-on", on);
 }

@@ -902,6 +902,17 @@ button:active {
   transition: opacity 400ms ease 300ms;
 }
 
+#hud #sound {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+#sound svg {
+  display: block;
+}
+
 #sound.is-on {
   color: var(--accent);
 }
