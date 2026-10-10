@@ -11,6 +11,8 @@ export type BootLog = {
   progressDone(text: string): void;
   /** Fade the boot screen out and remove it from the accessibility tree. */
   dismiss(durationMs: number): Promise<void>;
+  /** Every finished line (timestamped), for mirroring onto the in-scene screen. */
+  history(): { text: string; tone?: "muted" | "good" | "warn" }[];
   readonly active: boolean;
 };
 
@@ -25,6 +27,7 @@ export function createBootLog(onSkip: () => void): BootLog {
   const logEl = document.getElementById("boot-log");
   const skipBtn = document.getElementById("boot-skip");
   let active = !!root;
+  const entries: { text: string; tone?: "muted" | "good" | "warn" }[] = [];
 
   let progressEl: HTMLParagraphElement | null = null;
   let pending: { label: string; loaded: number; total: number } | null = null;
@@ -71,7 +74,11 @@ export function createBootLog(onSkip: () => void): BootLog {
       return active;
     },
     line(text, tone) {
-      append(text, tone);
+      const p = append(text, tone);
+      entries.push({ text: (p?.firstChild?.textContent ?? ts()) + " " + text, tone });
+    },
+    history() {
+      return entries.slice();
     },
     progress(label, loaded, total) {
       pending = { label, loaded, total };
@@ -85,7 +92,8 @@ export function createBootLog(onSkip: () => void): BootLog {
         progressEl.remove();
         progressEl = null;
       }
-      append(text);
+      const p = append(text);
+      entries.push({ text: (p?.firstChild?.textContent ?? ts()) + " " + text });
     },
     dismiss(durationMs) {
       if (!root || !active) return Promise.resolve();

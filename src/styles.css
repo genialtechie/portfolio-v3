@@ -55,28 +55,101 @@ canvas#c {
 
 #hud {
   position: absolute;
-  left: 16px;
-  right: 16px;
-  top: 16px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  pointer-events: none;
+  align-items: stretch;
+  height: calc(32px + env(safe-area-inset-bottom));
+  padding: 0 max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, 0.72);
+  border-top: 1px solid rgba(233, 236, 242, 0.08);
+  backdrop-filter: blur(6px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12.5px;
+  font-variant-ligatures: none;
+  color: rgba(233, 236, 242, 0.6);
 }
 
 #hud-left,
-#hud-right {
+#hud-right,
+#hud-tabs {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  pointer-events: auto;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 10px 30px var(--shadow);
-  backdrop-filter: blur(10px);
+  align-items: stretch;
+  min-width: 0;
+}
+
+#hud button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#hud button:hover {
+  color: #e9ecf2;
+}
+
+#hud button:active {
+  transform: none;
+}
+
+#hud button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -4px;
+}
+
+#hud-tabs button .n {
+  color: rgba(233, 236, 242, 0.35);
+}
+
+/* Current stop: inverted, like the active tmux window. */
+#hud-tabs button.is-active {
+  color: #000;
+  background: var(--accent);
+}
+
+#hud-tabs button.is-active .n {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+#hud #poi-action {
+  color: var(--accent);
+}
+
+#hud #poi-action b {
+  font-weight: 600;
+}
+
+#hud #poi-action kbd {
+  font: inherit;
+  color: rgba(233, 236, 242, 0.45);
+  margin-right: 2px;
+}
+
+@media (hover: none) {
+  /* No Enter key on touch devices; the action is the button itself. */
+  #hud #poi-action kbd {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Tabs already cover navigation on small screens. */
+  #prev,
+  #next {
+    display: none;
+  }
+
+  #hud button {
+    padding: 0 8px;
+  }
 }
 
 button {
@@ -98,9 +171,13 @@ button:active {
 }
 
 #poi-label {
-  color: var(--muted);
-  font-size: 14px;
-  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+#poi-label:empty {
+  display: none;
 }
 
 #annotation-layer {
@@ -115,24 +192,22 @@ button:active {
   will-change: transform, opacity;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 999px;
-  background: rgba(10, 12, 16, 0.65);
-  border: 1px solid rgba(110, 231, 255, 0.35);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
+  gap: 8px;
+  padding: 5px 9px;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(110, 231, 255, 0.4);
   color: var(--fg);
-  font-size: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-variant-ligatures: none;
   max-width: min(460px, calc(100vw - 32px));
 }
 
 .annotation .dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+  width: 7px;
+  height: 7px;
   background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(110, 231, 255, 0.14);
 }
 
 #overlay-root[hidden] {
@@ -744,4 +819,9 @@ button:active {
 #hud,
 #annotation-layer {
   transition: opacity 400ms ease 300ms;
+}
+
+#poi-action[hidden],
+.annotation[hidden] {
+  display: none;
 }

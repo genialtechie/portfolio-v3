@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { inject as injectVercelAnalytics } from "@vercel/analytics";
 import { injectSpeedInsights } from "@vercel/speed-insights";
 import { createBootLog, describeGpu, mb } from "./boot";
+import { createMacScreen, type MacScreen, type ScreenLine } from "./macScreen";
 
 type Poi = {
   id: string;
@@ -22,6 +23,8 @@ const prevBtn = qs<HTMLButtonElement>("#prev");
 const nextBtn = qs<HTMLButtonElement>("#next");
 const helpBtn = qs<HTMLButtonElement>("#help");
 const poiLabel = qs<HTMLSpanElement>("#poi-label");
+const poiAction = qs<HTMLButtonElement>("#poi-action");
+const hudTabs = qs<HTMLDivElement>("#hud-tabs");
 const overlayRoot = qs<HTMLDivElement>("#overlay-root");
 const annotationLayer = qs<HTMLDivElement>("#annotation-layer");
 const appRoot = qs<HTMLDivElement>("#app");
@@ -110,39 +113,44 @@ function getHashParam(key: string) {
   return new URLSearchParams(raw).get(key);
 }
 
+// The guided tour. Other POI_*_ANCHOR nodes in the scene (posters) are set
+// dressing: present in the room, not stops in the tour.
+// `hint` is the in-scene label; the Mac has none because its screen says it.
+const TOUR: { id: string; label: string; verb: string; external?: boolean; hint: string | null }[] = [
+  { id: "mac", label: "portfolio", verb: "open", hint: null },
+  { id: "arcade", label: "hoopzy", verb: "play", external: true, hint: "hoopzy · play ↗" },
+];
+const HOOPZY_URL = "https://hoopzy.fun";
+
 function findPois(root: THREE.Object3D): Poi[] {
-  const pois: Poi[] = [];
+  const anchors = new Map<string, THREE.Object3D>();
   root.traverse((obj: THREE.Object3D) => {
     const nm = obj.name || "";
     if (!nm.startsWith("POI_") || !nm.endsWith("_ANCHOR")) return;
     // POI_<ID>_ANCHOR
-    const id = nm.slice("POI_".length, nm.length - "_ANCHOR".length).toLowerCase();
-    const label = id.replaceAll("_", " ").toUpperCase();
-    pois.push({ id, label, anchor: obj });
+    anchors.set(nm.slice("POI_".length, nm.length - "_ANCHOR".length).toLowerCase(), obj);
   });
-  pois.sort((a, b) => a.id.localeCompare(b.id));
-  return pois;
+  return TOUR.flatMap((t) => {
+    const anchor = anchors.get(t.id);
+    return anchor ? [{ id: t.id, label: t.label, anchor }] : [];
+  });
 }
 
-function isDescendantOf(obj: THREE.Object3D, ancestor: THREE.Object3D) {
-  let cur: THREE.Object3D | null = obj;
-  while (cur) {
-    if (cur === ancestor) return true;
-    cur = cur.parent;
-  }
-  return false;
-}
+const tourEntry = (id: string) => TOUR.find((t) => t.id === id);
 
 let overlayUnmount: (() => void) | null = null;
 let overlayOpening: Promise<void> | null = null;
 
 async function openMacOverlayInternal() {
   if (overlayUnmount || overlayOpening) return;
-  overlayRoot.hidden = false;
   controls.enabled = false;
 
   overlayOpening = (async () => {
-    const mod = await import("./overlay/macos");
+    // Start fetching the overlay chunk while the camera moves into the screen.
+    const modP = import("./overlay/macos");
+    await zoomIntoScreen();
+    overlayRoot.hidden = false;
+    const mod = await modP;
     overlayUnmount = mod.mountMacOverlay(overlayRoot, {
       onClose: () => {
         // Drive state via URL so back/forward works.
@@ -170,7 +178,44 @@ function closeMacOverlayInternal() {
   overlayUnmount();
   overlayUnmount = null;
   if (!transition) controls.enabled = true;
+
+  // Pull back out of the screen to the active POI.
+  const poi = pois[activePoiIndex];
+  if (poi && gltfRoot) focusOnPoi(poi, { durationMs: 900 });
   requestRenderIfNotRequested(render);
+}
+
+/** Camera pose that fills the frame with the Mac's display (any aspect ratio). */
+function screenCloseUpPose() {
+  if (!macScreen) return null;
+  resizeRendererToDisplaySize(renderer, camera);
+  const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const fitW = 0.29 / (halfTan * camera.aspect);
+  const fitH = 0.18 / halfTan;
+  const dist = Math.min(fitW, fitH) * 0.9;
+  return {
+    pos: macScreen.center.clone().addScaledVector(macScreen.normal, dist),
+    target: macScreen.center.clone(),
+  };
+}
+
+/** Move the camera into the Mac's screen before the overlay takes over. */
+function zoomIntoScreen() {
+  const pose = screenCloseUpPose();
+  if (!pose || prefersReducedMotion()) return Promise.resolve();
+  if (camera.position.distanceTo(pose.pos) < 0.01) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    transition = {
+      startT: performance.now(),
+      durationMs: 650,
+      fromPos: camera.position.clone(),
+      fromTarget: controls.target.clone(),
+      toPos: pose.pos,
+      toTarget: pose.target,
+      onDone: resolve,
+    };
+    requestRenderIfNotRequested(render);
+  });
 }
 
 // Three.js setup
@@ -241,6 +286,7 @@ const loader = new GLTFLoader();
 
 let gltfRoot: THREE.Object3D | null = null;
 let macRoot: THREE.Object3D | null = null;
+let macScreen: MacScreen | null = null;
 let pois: Poi[] = [];
 let activePoiIndex = -1;
 
@@ -267,10 +313,10 @@ helpModal.innerHTML = `
     </div>
     <div class="help-body" id="help-desc">
       <ul class="help-list">
-        <li><b>Prev/Next</b> (or Left/Right arrows) cycles points of interest.</li>
+        <li><b>Prev/Next</b> (or Left/Right arrows) moves between the MacBook and the arcade.</li>
+        <li><b>Click / tap</b> the MacBook (or press <b>Enter</b>) to open the portfolio.</li>
         <li><b>Drag</b> to orbit a little around the focused item.</li>
-        <li><b>Double tap / double click</b> the MacBook to open the portfolio overlay.</li>
-        <li><b>Esc</b> closes the overlay.</li>
+        <li><b>Esc</b> closes the portfolio.</li>
       </ul>
 
       <details class="help-details">
@@ -375,9 +421,27 @@ function setActivePoiIndex(nextIndex: number, opts: { durationMs?: number } = {}
   if (!pois.length) return;
   activePoiIndex = (nextIndex + pois.length) % pois.length;
   const poi = pois[activePoiIndex]!;
-  poiLabel.textContent = poi ? `POI: ${poi.label}` : "";
-  setAnnotationText(annotationEl, poi ? poi.label : "");
+  poiLabel.textContent = "";
+  const entry = tourEntry(poi.id);
+  poiAction.hidden = !entry;
+  if (entry) {
+    poiAction.innerHTML = `<kbd>↵</kbd> ${entry.verb} <b>${entry.label}</b>${entry.external ? " ↗" : ""}`;
+  }
+  for (const tab of hudTabs.querySelectorAll<HTMLButtonElement>("button")) {
+    const on = tab.dataset.poi === poi.id;
+    tab.classList.toggle("is-active", on);
+    tab.setAttribute("aria-current", on ? "true" : "false");
+  }
+  setAnnotationText(annotationEl, entry?.hint ?? "");
+  annotationEl.hidden = !entry?.hint;
   focusOnPoi(poi, opts);
+}
+
+/** The one thing each stop does. */
+function runPoiAction(poi: Poi | undefined) {
+  if (!poi) return;
+  if (poi.id === "mac") setHashParams({ poi: "mac", overlay: "macos" });
+  else if (poi.id === "arcade") window.open(HOOPZY_URL, "_blank", "noopener");
 }
 
 let transition:
@@ -388,6 +452,7 @@ let transition:
       fromTarget: THREE.Vector3;
       toPos: THREE.Vector3;
       toTarget: THREE.Vector3;
+      onDone?: () => void;
     }
   | null = null;
 
@@ -405,7 +470,9 @@ function poiPose(poi: Poi) {
   const center = tmpBox.setFromObject(gltfRoot!).getCenter(tmpV2).clone();
   const dirToCenter = center.clone().sub(target).normalize();
 
-  const distance = 1.7;
+  // Portrait screens have a narrow horizontal view: step back so the prop fits.
+  resizeRendererToDisplaySize(renderer, camera);
+  const distance = 1.7 / Math.sqrt(Math.min(1, camera.aspect / 0.9));
   const height = 0.45;
   const camPos = target
     .clone()
@@ -422,6 +489,9 @@ function focusOnPoi(poi: Poi, opts: { durationMs?: number } = {}) {
   const { target, camPos } = poiPose(poi);
 
   controls.enabled = false;
+
+  // Anything awaiting the interrupted transition shouldn't hang.
+  transition?.onDone?.();
 
   if (!durationMs) {
     transition = null;
@@ -462,7 +532,11 @@ function prevPoi() {
 prevBtn.addEventListener("click", () => prevPoi());
 nextBtn.addEventListener("click", () => nextPoi());
 
+poiAction.addEventListener("click", () => runPoiAction(pois[activePoiIndex]));
+
 window.addEventListener("keydown", (e) => {
+  if (appRoot.hasAttribute("data-booting")) return; // boot log owns Enter while loading
+
   if (!overlayRoot.hidden) {
     if (e.key === "Escape") {
       // Close via URL so it works even if the overlay module is still loading.
@@ -478,100 +552,75 @@ window.addEventListener("keydown", (e) => {
 
   if (e.key === "ArrowLeft") prevPoi();
   if (e.key === "ArrowRight") nextPoi();
+  // Number keys jump to a stop, matching the "1:portfolio 2:hoopzy" tabs.
+  const n = Number(e.key);
+  if (Number.isInteger(n) && n >= 1 && n <= pois.length) setHashParam("poi", pois[n - 1]!.id);
+
+  // Enter runs the current stop's action, unless a control has focus (it handles Enter itself).
+  const focused = document.activeElement;
+  if (e.key === "Enter" && (focused === document.body || focused === canvas)) {
+    runPoiAction(pois[activePoiIndex]);
+  }
 });
 
-// Raycast interactions
+// Pointer interactions. Hit-testing uses the props' bounding boxes: it's cheap
+// enough to run on hover (the MacBook alone is ~140k triangles) and generous
+// enough to be an easy target.
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
+const hitTargets: { id: string; box: THREE.Box3 }[] = [];
+const tmpHit = new THREE.Vector3();
 
-function tryActivateMacAt(clientX: number, clientY: number) {
-  if (!gltfRoot || !macRoot) return;
-
+function poiAt(clientX: number, clientY: number) {
   const rect = canvas.getBoundingClientRect();
   ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
   ndc.y = -(((clientY - rect.top) / rect.height) * 2 - 1);
   raycaster.setFromCamera(ndc, camera);
-
-  const hits = raycaster.intersectObject(gltfRoot, true);
-  const hitObj = hits[0]?.object;
-  if (!hitObj) return;
-
-  if (isDescendantOf(hitObj, macRoot)) {
-    // Navigate via hash so back/forward works.
-    setHashParams({ poi: "mac", overlay: "macos" });
+  let best: { id: string; d: number } | null = null;
+  for (const t of hitTargets) {
+    if (!raycaster.ray.intersectBox(t.box, tmpHit)) continue;
+    const d = tmpHit.distanceTo(raycaster.ray.origin);
+    if (!best || d < best.d) best = { id: t.id, d };
   }
+  return best?.id ?? null;
 }
 
-canvas.addEventListener("dblclick", (e) => {
-  tryActivateMacAt(e.clientX, e.clientY);
-});
-
-// Mobile: "dblclick" doesn't reliably fire for touch, so implement a tiny double-tap detector.
-let touchDown:
-  | {
-      id: number;
-      x: number;
-      y: number;
-      moved: boolean;
-    }
-  | null = null;
-let lastTap:
-  | {
-      t: number;
-      x: number;
-      y: number;
-    }
-  | null = null;
-
-const TAP_MOVE_PX = 14;
-const DOUBLE_TAP_MS = 360;
-const DOUBLE_TAP_RADIUS_PX = 26;
+// One click/tap: on the current stop it runs the action; on another prop it goes there.
+// Drags (orbiting) never count as clicks.
+const TAP_MOVE_PX = 8;
+let press: { id: number; x: number; y: number; moved: boolean } | null = null;
 
 canvas.addEventListener("pointerdown", (e) => {
-  if (e.pointerType !== "touch") return;
-  touchDown = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+  press = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
 });
 
 canvas.addEventListener("pointermove", (e) => {
-  if (!touchDown) return;
-  if (e.pointerType !== "touch") return;
-  if (e.pointerId !== touchDown.id) return;
-  const dx = e.clientX - touchDown.x;
-  const dy = e.clientY - touchDown.y;
-  if (dx * dx + dy * dy > TAP_MOVE_PX * TAP_MOVE_PX) touchDown.moved = true;
+  if (press && e.pointerId === press.id) {
+    const dx = e.clientX - press.x;
+    const dy = e.clientY - press.y;
+    if (dx * dx + dy * dy > TAP_MOVE_PX * TAP_MOVE_PX) press.moved = true;
+    return;
+  }
+  if (e.pointerType === "mouse" && !transition) {
+    canvas.style.cursor = poiAt(e.clientX, e.clientY) ? "pointer" : "";
+  }
 });
 
 canvas.addEventListener("pointerup", (e) => {
-  if (e.pointerType !== "touch") return;
-  if (touchDown && e.pointerId === touchDown.id && touchDown.moved) {
-    touchDown = null;
-    return;
-  }
-  touchDown = null;
+  const p = press;
+  press = null;
+  if (!p || p.id !== e.pointerId || p.moved || !gltfRoot) return;
+  if (!overlayRoot.hidden || helpOpen || appRoot.hasAttribute("data-booting")) return;
 
-  const now = performance.now();
-  if (!lastTap) {
-    lastTap = { t: now, x: e.clientX, y: e.clientY };
-    return;
-  }
-
-  const dt = now - lastTap.t;
-  const dx = e.clientX - lastTap.x;
-  const dy = e.clientY - lastTap.y;
-  const within = dx * dx + dy * dy <= DOUBLE_TAP_RADIUS_PX * DOUBLE_TAP_RADIUS_PX;
-
-  if (dt <= DOUBLE_TAP_MS && within) {
-    lastTap = null;
-    tryActivateMacAt(e.clientX, e.clientY);
-    return;
-  }
-
-  lastTap = { t: now, x: e.clientX, y: e.clientY };
+  const id = poiAt(e.clientX, e.clientY);
+  if (!id) return;
+  const active = pois[activePoiIndex];
+  if (active?.id === id) runPoiAction(active);
+  else setHashParam("poi", id);
 });
 
-canvas.addEventListener("pointercancel", (e) => {
-  if (e.pointerType !== "touch") return;
-  touchDown = null;
+canvas.addEventListener("pointercancel", () => {
+  press = null;
 });
 
 function render() {
@@ -592,9 +641,11 @@ function render() {
     camera.lookAt(controls.target);
 
     if (t >= 1) {
+      const done = transition.onDone;
       transition = null;
       controls.update();
-      controls.enabled = true;
+      controls.enabled = overlayRoot.hidden;
+      done?.();
     } else {
       requestRenderIfNotRequested(render);
     }
@@ -693,7 +744,7 @@ async function init() {
   pois = findPois(gltfRoot);
   for (const p of pois) p.anchor.visible = false;
 
-  // Mac root (used for double-click hit testing)
+  // Mac root (click target + where the screen lives)
   macRoot =
     gltfRoot.getObjectByName("macbook.glb") ??
     gltfRoot.getObjectByProperty("name", "macbook.glb") ??
@@ -703,6 +754,34 @@ async function init() {
       if (macRoot) return;
       if ((o.name || "").toLowerCase().includes("macbook")) macRoot = o;
     });
+  }
+
+  // Status-bar tabs, one per stop (tmux-style "1:portfolio 2:hoopzy").
+  hudTabs.replaceChildren(
+    ...pois.map((p, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.poi = p.id;
+      b.innerHTML = `<span class="n">${i + 1}:</span>${p.label}`;
+      b.addEventListener("click", () => setHashParam("poi", p.id));
+      return b;
+    }),
+  );
+
+  // Click/hover targets for the tour stops.
+  gltfRoot.updateMatrixWorld(true);
+  const arcadeRoot = gltfRoot.getObjectByName("final_fight_arcade.glb");
+  for (const [id, obj] of [["mac", macRoot], ["arcade", arcadeRoot]] as const) {
+    if (obj && pois.some((p) => p.id === id)) hitTargets.push({ id, box: new THREE.Box3().setFromObject(obj) });
+  }
+
+  // The Mac's display as an in-scene terminal.
+  const macPoi = pois.find((p) => p.id === "mac");
+  if (macPoi && macRoot) {
+    const { dirToCenter } = poiPose(macPoi);
+    const towardViewer = new THREE.Vector3(dirToCenter.x, 0, dirToCenter.z).normalize();
+    macScreen = createMacScreen(macPoi.anchor, macRoot, towardViewer, renderer.capabilities.getMaxAnisotropy());
+    if (macScreen) scene.add(macScreen.mesh);
   }
 
   // GPU warm-up while the boot screen is still up, so the first visible frame doesn't hitch.
@@ -735,24 +814,20 @@ async function init() {
   const targetIdx = Math.max(0, pois.findIndex((p) => p.id === targetId));
   const targetPoi = pois[targetIdx]!;
 
-  const pullBack = targetPoi.id === "mac" && !prefersReducedMotion();
-  if (pullBack) {
-    const { target, dirToCenter } = poiPose(targetPoi);
-    // Close enough that the dark display overfills the frame on any aspect ratio.
-    // Display is roughly 0.26m x 0.17m in world units (tuned against renders).
-    resizeRendererToDisplaySize(renderer, camera);
-    const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const fitW = 0.13 / (halfTan * camera.aspect);
-    const fitH = 0.085 / halfTan;
-    const dist = Math.min(fitW, fitH) * 0.9;
-    const flat = new THREE.Vector3(dirToCenter.x, 0, dirToCenter.z).normalize();
-    camera.position.copy(target).addScaledVector(flat, dist);
-    controls.target.copy(target);
-    camera.lookAt(target);
+  const closeUp = targetPoi.id === "mac" ? screenCloseUpPose() : null;
+  const overlayDeepLink = (getHashParam("overlay") || "").toLowerCase() === "macos";
+  const pullBack = !!closeUp && !prefersReducedMotion() && !overlayDeepLink;
+  if (closeUp && (pullBack || overlayDeepLink)) {
+    // Start inside the Mac: the display fills the frame.
+    camera.position.copy(closeUp.pos);
+    controls.target.copy(closeUp.target);
+    camera.lookAt(closeUp.target);
   }
 
+  boot.line("ready", "good");
+  // The screen continues the same session the boot log started.
+  macScreen?.setLines(boot.history().map(toScreenLine));
   renderer.render(scene, camera);
-  boot.line(`ready · ${secs(performance.now())} · ${renderer.info.render.calls} draw calls`, "good");
 
   // Hold the final line for a beat, then hand off.
   await new Promise((r) => window.setTimeout(r, 450));
@@ -764,12 +839,41 @@ async function init() {
     setActivePoiIndex(targetIdx, { durationMs: 1600 });
     // HUD + annotation arrive once the camera has settled, not over the close-up.
     window.setTimeout(() => appRoot.removeAttribute("data-booting"), 1500);
+    // Once we're back in the room, the session prints the menu.
+    window.setTimeout(showScreenMenu, 1900);
   } else {
+    showScreenMenu();
     void boot.dismiss(prefersReducedMotion() ? 200 : 400);
     appRoot.removeAttribute("data-booting");
   }
   applyUrlState(); // focuses the POI (if not already) + overlay deep links
 
+  requestRenderIfNotRequested(render);
+}
+
+const isTouch = () => window.matchMedia?.("(hover: none)")?.matches ?? false;
+
+function toScreenLine(l: { text: string; tone?: "muted" | "good" | "warn" }): ScreenLine {
+  return { text: l.text, tone: l.tone ?? "muted" };
+}
+
+/** `portfolio --help`, as printed on the in-scene screen (mirrors the overlay home). */
+function showScreenMenu() {
+  if (!macScreen) return;
+  const lines: ScreenLine[] = [
+    ...boot.history().slice(-1).map(toScreenLine),
+    { text: "haleem@genialtechie:~$ portfolio --help", tone: "accent" },
+    { text: "Haleem Bello · Full Stack Developer", tone: "key" },
+    { text: "Atlanta, GA · performance · accessibility", tone: "muted" },
+    { text: "" },
+    { text: "  [1] projects   selected work, demos, links" },
+    { text: "  [2] writing    posts and notes" },
+    { text: "  [3] about      bio, skills, interests" },
+    { text: "  [4] contact    where to reach me" },
+    { text: "" },
+    { text: isTouch() ? "▸ tap to open" : "▸ click or press enter to open", tone: "good" },
+  ];
+  macScreen.setLines(lines);
   requestRenderIfNotRequested(render);
 }
 

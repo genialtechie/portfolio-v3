@@ -111,8 +111,8 @@
     <div id="app" data-booting>
       <h1 class="sr-only">Haleem Bello, Full Stack Developer</h1>
       <p class="sr-only">
-        Performance-first 3D portfolio. Use Prev/Next or Left/Right arrows to cycle points of interest. Double tap the
-        MacBook to open the portfolio overlay.
+        Performance-first 3D portfolio. Use Prev/Next or Left/Right arrows to move between the MacBook and the arcade.
+        Press Enter or the action button to open the portfolio or play Hoopzy.
       </p>
 
       <noscript>
@@ -142,16 +142,19 @@
 
       <canvas id="c" aria-label="3D portfolio scene"></canvas>
 
-      <div id="hud" aria-live="polite">
+      <!-- Scene status bar: reads like a tmux status line under the "session". -->
+      <nav id="hud" aria-label="Scene navigation">
         <div id="hud-left">
-          <button id="prev" type="button">Prev</button>
-          <button id="next" type="button">Next</button>
-          <span id="poi-label"></span>
+          <button id="prev" type="button" aria-label="Previous stop">&larr;</button>
+          <div id="hud-tabs"></div>
+          <button id="next" type="button" aria-label="Next stop">&rarr;</button>
         </div>
         <div id="hud-right">
-          <button id="help" type="button" aria-haspopup="dialog">?</button>
+          <span id="poi-label" aria-live="polite"></span>
+          <button id="poi-action" type="button" hidden></button>
+          <button id="help" type="button" aria-haspopup="dialog" aria-label="Help and credits">?</button>
         </div>
-      </div>
+      </nav>
 
       <div id="annotation-layer" aria-hidden="true"></div>
 
