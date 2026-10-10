@@ -223,8 +223,8 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     rootEl.className = "tui";
 
     rootEl.appendChild(createTuiLine("Haleem Bello", "plain"));
-    rootEl.appendChild(createTuiLine("Full Stack Developer | Atlanta, GA", "muted"));
-    rootEl.appendChild(createTuiLine("Focus: performance, accessibility, design systems.", "muted"));
+    rootEl.appendChild(createTuiLine("Product engineer | Atlanta, GA", "muted"));
+    rootEl.appendChild(createTuiLine("I ship whole products: 3D on the web, AI tools, mobile apps.", "muted"));
     rootEl.appendChild(createTuiLine("", "plain"));
     rootEl.appendChild(createTuiLine("$ portfolio --help", "plain"));
     rootEl.appendChild(createTuiLine("Commands:", "muted"));
@@ -233,10 +233,10 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     menu.className = "tui-menu";
 
     const cards: Array<{ id: string; title: string; desc: string; shortcut: string }> = [
-      { id: "projects", title: "projects", desc: "Selected work, demos, links.", shortcut: "1" },
-      { id: "writing", title: "writing", desc: "Posts and notes (content/writing/).", shortcut: "2" },
-      { id: "about", title: "about", desc: "Short bio, skills, interests.", shortcut: "3" },
-      { id: "contact", title: "contact", desc: "Where to reach me.", shortcut: "4" },
+      { id: "projects", title: "projects", desc: "Case studies: what I built and the decisions behind it.", shortcut: "1" },
+      { id: "writing", title: "writing", desc: "Engineering notes and a build journal.", shortcut: "2" },
+      { id: "about", title: "about", desc: "Who I am and how I work.", shortcut: "3" },
+      { id: "contact", title: "contact", desc: "Email, résumé, GitHub, LinkedIn.", shortcut: "4" },
     ];
 
     const pageIds = new Set(allPages.map((p) => p.id));
@@ -268,9 +268,10 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
     indexList.className = "tui-index-list";
 
     const curated: Array<{ id: string; label: string }> = [
-      { id: "projects", label: "- 01_projects.md" },
-      { id: "about", label: "- 02_about.md" },
-      { id: "contact", label: "- 03_contact.md" },
+      { id: "projects", label: "- projects.md" },
+      { id: "about", label: "- about.md" },
+      { id: "contact", label: "- contact.md" },
+      { id: "colophon", label: "- colophon.md" },
       { id: "writing", label: "- writing/" },
     ];
 
@@ -413,6 +414,20 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
       const article = document.createElement("div");
       article.className = "md-article";
       article.innerHTML = await marked.parse(raw || "");
+      // Links between pages are written as (#page=projects/imaan) in markdown.
+      // Handle them in-overlay; a plain hash change would drop #overlay and close it.
+      for (const a of article.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+        const href = a.getAttribute("href") || "";
+        if (href.startsWith("#page=")) {
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            openPage(decodeURIComponent(href.slice("#page=".length)));
+          });
+        } else if (/^https?:\/\//.test(href)) {
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+        }
+      }
       md.appendChild(article);
     } catch (err) {
       console.error(err);

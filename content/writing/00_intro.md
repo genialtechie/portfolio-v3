@@ -1,33 +1,25 @@
 # Hey reader
 
-Welcome to my journal.
+This is my build journal: what I'm working on, the decisions behind it, and the numbers when I have them. It's not polished, it's a place to keep receipts.
 
-Here I try to document what I'm currently working on, what is happening in my life, and carry you along in the journey. Nothing too polished, just a place to keep receipts and share context.
+## Why a room?
 
-## So, how did I build this snappy 3D experience?
+A portfolio is a product with one job: get someone to understand what you build and how well you build it, quickly. A list of links does that job adequately. I wanted the site itself to be evidence, so the first thing you see is something that loads fast, runs on a phone, and still feels a little magical.
 
-First, I know you're probably wondering how I pulled this off. For the most part, Codex did the heavy lifting.
+## How it came together
 
-I sourced free `.glb` models from Sketchfab (huge thanks to the 3D artists behind each asset). You can view credits anytime by clicking `?` in the scene.
+I assembled the scene in the three.js editor rather than Blender, from CC-licensed models (credits under `?`), with named anchor nodes the code can find. From there the work was the boring, important part: a strict set of rules for performance and accessibility, written down so every change, mine or an AI agent's, has to respect them.
 
-I also saved a ton of time (and avoided Blender) by arranging everything inside the three.js editor. I placed the room, arcade, table, MacBook, and posters, added a few POI anchors, exported the combined scene as a single `.glb`, and started building the site around that.
+- No framework in the critical path; the overlay loads only when you open the Mac.
+- Render on demand. No permanent animation loop.
+- Real buttons, full keyboard control, and reduced-motion support.
+- Measure GPU memory and bytes, don't guess.
 
-## The boring (important) part: performance and accessibility
+I use coding agents a lot, Codex and Claude among them. They're fast hands. The rules, the architecture and the judgment calls are what I bring, and that's what these posts are about.
 
-Performance, accessibility, and access are the whole point. This is a portfolio that can be opened on all kinds of devices and networks, so it has to feel instant, not fragile.
+## Recent notes
 
-I started by writing a strict `AGENTS.md` to keep the project disciplined:
+- [Putting a 25 MB scene on a diet](#page=writing/scene-diet)
+- [How I decided where the camera is allowed to look](#page=writing/camera-bounds)
 
-- No React in the initial bundle (the core 3D experience is frameworkless TypeScript + Three.js).
-- Render on demand (no infinite `requestAnimationFrame` unless something is actually animating).
-- Lazy-load the MacBook overlay UI so first load stays fast.
-- Use real buttons, focus management, and keyboard shortcuts (and respect reduced motion).
-- Be careful with GPU memory (textures and draw calls matter).
-
-And because mobile is reality, not a "nice to have", I made sure double-tap opens the MacBook overlay and navigation still works even without a keyboard.
-
-## Where this is going
-
-The room is the homepage. The MacBook is the portal to everything else.
-
-Next up, I want to expand the attractions (more POIs, better annotations, better camera framing), optimize the scene asset pipeline, and keep writing as I ship.
+<!-- TODO(haleem): this replaces the original intro. Adjust the agents paragraph to your voice. -->

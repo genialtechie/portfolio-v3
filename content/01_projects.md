@@ -1,26 +1,28 @@
 # Projects
 
-Selected work that best represents how I build: performance-first UI, clean systems, and shipping end-to-end.
+Products I built end to end, with the decisions behind them. Each one is a short case study: the problem, what I built, the calls I made and what they cost.
 
-## Qualifies.me
+## Shipping
 
-AI-powered resume optimization tool.
+- **[IMAAN](#page=projects/imaan)** · 2026 · iOS\
+  A prayer app for keeping each other consistent with friends. Expo + Supabase, now in App Store review.
+- **[Custom commerce](#page=projects/custom-commerce)** · 2025–26 · web, 3D\
+  A 3D configurator and store for made-to-order grillz: per-tooth customization, live pricing, Stripe checkout. [Live demo](https://commerce.magpollo.com/watch).
+- **[Hoopzy](#page=projects/hoopzy)** · 2025–26 · web game\
+  A swipe-to-shoot basketball game with real physics. It's the arcade in this room. [Play it](https://hoopzy.fun).
 
-- Stack: React/Next.js, TypeScript, Supabase, Node.js
-- Work: file upload + parsing pipeline, ATS-style scoring, tailored outputs
+## Archived
 
-## Grillz Configurator
+Side projects that are no longer running. They're here for the engineering, and for what they taught me.
 
-High-framerate 3D jewelry configurator with real-time customization.
+- **[Qualifies.me](#page=projects/qualifies-me)** · 2025 · AI product\
+  Resume tailoring against a job description, with LLM parsing, schema-checked output and usage metering.
+- **[Menu Magic](#page=projects/menu-magic)** · 2025–26 · AI pipeline\
+  Menu scraping plus generated product photos on a self-hosted image model. It reached a working pipeline, not a launch.
 
-- Stack: performance-focused 3D rendering + web UI
-- Work: smooth interactions, realtime updates, careful frame budgeting
+## Client work
 
-## Magpollo Client Work (30+ Projects)
+- **[Magpollo](#page=projects/client-work)** · 2023–present\
+  The studio I co-founded. Media platforms, event and voting systems, and commerce builds for small businesses.
 
-Launched a web development company focused on local businesses and shipped 30+ production projects.
-
-- Responsive frontends (React/Next.js)
-- Real-time reservations and dynamic ordering flows
-- REST APIs + data modeling (PostgreSQL/Supabase)
-- CI/CD (GitHub Actions, Docker), performance + accessibility improvements
+<!-- TODO(haleem): order is a draft. IMAAN leads because it's current and shipping; swap if you'd rather lead with the configurator. -->
