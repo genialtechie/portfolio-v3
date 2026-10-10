@@ -15,4 +15,4 @@ I studied Information Technology (Software Development) at Georgia Gwinnett Coll
 
 ## Now
 
-Building ReviewTailor, shipping Imaan, and putting Hoopzy inside this arcade.
+Building ReviewTailor and shipping Imaan.

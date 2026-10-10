@@ -1,6 +1,6 @@
 # Agent Guide (portfolio-v3)
 
-This repo is a performance-first 3D portfolio site. The homepage is a guided 3D room with a few "attractions" (POIs). The tour has two stops, the MacBook (portfolio) and the arcade (Hoopzy). Users move between them with the status bar tabs, arrow keys or 1/2, the camera animates between stops, and a small bounded orbit is enabled only while focused on a stop. Clicking the MacBook (or pressing Enter) zooms into its screen and opens the full-screen terminal-style portfolio UI.
+This repo is a performance-first 3D portfolio site. The homepage is a guided 3D room with a few "attractions" (POIs). The tour has two stops, the MacBook (portfolio) and the arcade (Hoopzy). Users move between them with the status bar tabs, arrow keys or 1/2, the camera animates between stops, and a small bounded orbit is enabled only while focused on a stop. Clicking the MacBook (or pressing Enter) zooms into its screen and opens the full-screen terminal-style portfolio UI. Clicking the arcade zooms into the cabinet and opens Hoopzy (hoopzy.fun) in an iframe inside a cabinet-shaped frame (`src/overlay/arcade.ts`, `#overlay=arcade`), full screen on phones. The iframe only exists while it's open. Esc inside the game reaches us through a `hoopzy:exit` postMessage from hoopzy.fun.
 
 The core rules below are intentionally strict. The point is to ship a site that feels instant, not a tech demo that happens to be a portfolio.
 

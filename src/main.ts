@@ -155,8 +155,7 @@ const TOUR: {
     id: "arcade",
     label: "hoopzy",
     verb: "play",
-    external: true,
-    hint: "hoopzy · play ↗",
+    hint: "hoopzy · play",
     orbit: {
       wide: { azimuth: [-25, 35], polar: [50, 85], distance: [0.6, 1.2] },
       narrow: { azimuth: [-25, 30], polar: [60, 80], distance: [0.6, 1.1] },
@@ -191,55 +190,80 @@ function findPois(root: THREE.Object3D): Poi[] {
 
 const tourEntry = (id: string) => TOUR.find((t) => t.id === id);
 
+type OverlayKind = "macos" | "arcade";
+const overlayFromHash = (): OverlayKind | null => {
+  const v = (getHashParam("overlay") || "").toLowerCase();
+  return v === "macos" || v === "arcade" ? v : null;
+};
+
+let overlayKind: OverlayKind | null = null;
 let overlayUnmount: (() => void) | null = null;
 let overlayOpening: Promise<void> | null = null;
+let arcadeOpenedAt = 0;
 
-async function openMacOverlayInternal() {
-  if (overlayUnmount || overlayOpening) return;
+/** Zoom into the prop, then hand over to its overlay (the portfolio or the game). */
+async function openOverlayInternal(kind: OverlayKind) {
+  if (overlayKind === kind && (overlayUnmount || overlayOpening)) return;
+  if (overlayKind) closeOverlayInternal({ pullBack: false });
+  overlayKind = kind;
   controls.enabled = false;
 
   overlayOpening = (async () => {
-    // Start fetching the overlay chunk while the camera moves into the screen.
-    const modP = import("./overlay/macos");
+    // Start fetching the overlay chunk while the camera moves in.
+    const modP = kind === "macos" ? import("./overlay/macos") : import("./overlay/arcade");
     hints.clear();
     window.clearTimeout(orbitHintTimer);
-    await zoomIntoScreen();
+    annotationEl.hidden = true; // the label would float over the close-up
+    await (kind === "macos" ? zoomIntoScreen() : zoomIntoArcade());
+    if (overlayKind !== kind) return; // closed or switched during the zoom
     overlayRoot.hidden = false;
+    overlayRoot.dataset.kind = kind;
     const mod = await modP;
-    overlayUnmount = mod.mountMacOverlay(overlayRoot, {
-      onClose: () => {
-        // Drive state via URL so back/forward works.
-        setHashParam("overlay", null);
-      },
-    });
+    if (overlayKind !== kind) return;
+    // Drive state via URL so back/forward works.
+    const onClose = () => setHashParam("overlay", null);
+    overlayUnmount =
+      "mountMacOverlay" in mod
+        ? mod.mountMacOverlay(overlayRoot, { onClose })
+        : mod.mountArcade(overlayRoot, { url: HOOPZY_URL, onClose });
+    if (kind === "arcade") arcadeOpenedAt = performance.now();
     overlayOpening = null;
 
     // If the user navigated away while the module was loading, immediately close.
-    const overlay = (getHashParam("overlay") || "").toLowerCase();
-    if (overlay !== "macos") closeMacOverlayInternal();
+    if (overlayFromHash() !== kind) closeOverlayInternal();
   })().catch((err) => {
     overlayOpening = null;
     console.error(err);
-    closeMacOverlayInternal();
+    closeOverlayInternal();
   });
 
   await overlayOpening;
 }
 
-function closeMacOverlayInternal() {
+function closeOverlayInternal(opts: { pullBack?: boolean } = {}) {
+  const kind = overlayKind;
+  overlayKind = null;
+  overlayOpening = null;
   overlayRoot.hidden = true;
-  if (!overlayUnmount) return;
+  delete overlayRoot.dataset.kind;
+  if (!kind) return;
 
-  overlayUnmount();
+  const wasMounted = !!overlayUnmount;
+  overlayUnmount?.();
   overlayUnmount = null;
   if (!transition) controls.enabled = true;
 
-  // Pull back out of the screen to the active POI.
+  if (kind === "arcade" && wasMounted) {
+    track("close_hoopzy", { seconds: Math.round((performance.now() - arcadeOpenedAt) / 1000) });
+  }
+
+  // Pull back out to the active stop (also when closed mid-zoom).
   const poi = pois[activePoiIndex];
-  if (poi && gltfRoot) focusOnPoi(poi, { durationMs: 900 });
+  annotationEl.hidden = !(poi && tourEntry(poi.id)?.hint);
+  if (opts.pullBack !== false && poi && gltfRoot) focusOnPoi(poi, { durationMs: 900 });
 
   // After their first look at the work, point them at the game.
-  if (pois.some((p) => p.id === "arcade")) {
+  if (kind === "macos" && wasMounted && pois.some((p) => p.id === "arcade")) {
     window.setTimeout(() => {
       if (!overlayRoot.hidden || pois[activePoiIndex]?.id !== "mac") return;
       hints.show("arcade", isTouch() ? "tip: tap 2:hoopzy to visit the arcade" : "tip: → or 2 visits the arcade");
@@ -271,6 +295,40 @@ function zoomIntoScreen() {
     transition = {
       startT: performance.now(),
       durationMs: 650,
+      fromPos: camera.position.clone(),
+      fromTarget: controls.target.clone(),
+      toPos: pose.pos,
+      toTarget: pose.target,
+      onDone: resolve,
+      free: true,
+    };
+    requestRenderIfNotRequested(render);
+  });
+}
+
+/** Camera pose in front of the arcade's screen, filling most of the frame. */
+function arcadeCloseUpPose() {
+  if (!arcadeScreen) return null;
+  resizeRendererToDisplaySize(renderer, camera);
+  const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const fitH = arcadeScreen.height / 2 / (halfTan * 0.7);
+  const fitW = arcadeScreen.width / 2 / (halfTan * camera.aspect * 0.85);
+  const dist = Math.max(fitH, fitW);
+  return {
+    pos: arcadeScreen.center.clone().addScaledVector(arcadeScreen.normal, dist),
+    target: arcadeScreen.center.clone(),
+  };
+}
+
+/** Lean into the cabinet before the game takes over. */
+function zoomIntoArcade() {
+  const pose = arcadeCloseUpPose();
+  if (!pose || prefersReducedMotion()) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    transition?.onDone?.();
+    transition = {
+      startT: performance.now(),
+      durationMs: 700,
       fromPos: camera.position.clone(),
       fromTarget: controls.target.clone(),
       toPos: pose.pos,
@@ -353,6 +411,8 @@ const loader = new GLTFLoader().setKTX2Loader(ktx2Loader).setMeshoptDecoder(Mesh
 let gltfRoot: THREE.Object3D | null = null;
 let macRoot: THREE.Object3D | null = null;
 let macScreen: MacScreen | null = null;
+/** The arcade cabinet's screen, measured from its mesh so the zoom lands square on it. */
+let arcadeScreen: { center: THREE.Vector3; normal: THREE.Vector3; width: number; height: number } | null = null;
 let pois: Poi[] = [];
 let activePoiIndex = -1;
 
@@ -383,10 +443,10 @@ helpModal.innerHTML = `
         <dt><kbd>←</kbd> <kbd>→</kbd> or <kbd>1</kbd> <kbd>2</kbd></dt><dd>move between the MacBook and the arcade</dd>
         <dt><kbd>enter</kbd> or click</dt><dd>open what you're looking at</dd>
         <dt>drag</dt><dd>orbit a little around it</dd>
-        <dt><kbd>esc</kbd></dt><dd>close the portfolio</dd>
+        <dt><kbd>esc</kbd></dt><dd>close the portfolio or the game</dd>
         <dt><kbd>?</kbd></dt><dd>this page</dd>
       </dl>
-      <p class="help-touch">On touch screens: tap the tabs below to move, tap the Mac to open.</p>
+      <p class="help-touch">On touch screens: tap the tabs below to move, tap the Mac or the arcade to open.</p>
 
       <details class="help-details">
         <summary>CREDITS <span>3D models, CC BY 4.0</span></summary>
@@ -540,7 +600,7 @@ function runPoiAction(poi: Poi | undefined, via: "click" | "enter" | "button") {
   } else if (poi.id === "arcade") {
     track("play_hoopzy", { via });
     hints.followed("arcade-intro");
-    window.open(HOOPZY_URL, "_blank", "noopener");
+    setHashParams({ poi: "arcade", overlay: "arcade" });
   }
 }
 
@@ -788,6 +848,39 @@ function render() {
   renderer.render(scene, camera);
 }
 
+/** Center, facing direction and size of a flat-ish screen mesh, in world space. */
+function measureScreen(mesh: THREE.Mesh, viewer: THREE.Vector3) {
+  const pos = mesh.geometry?.getAttribute("position");
+  const nrm = mesh.geometry?.getAttribute("normal");
+  if (!pos || !nrm) return null;
+  mesh.updateWorldMatrix(true, false);
+  const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+
+  const normal = new THREE.Vector3();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < nrm.count; i++) normal.add(v.fromBufferAttribute(nrm, i).applyMatrix3(normalMatrix));
+  normal.normalize();
+
+  const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+  if (normal.dot(v.copy(viewer).sub(center)) < 0) normal.negate(); // face the viewer
+
+  // Screen axes: "up" is world up flattened onto the screen, "right" is across it.
+  const up = new THREE.Vector3(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+  const right = new THREE.Vector3().crossVectors(up, normal);
+  const u = [Infinity, -Infinity];
+  const r = [Infinity, -Infinity];
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).sub(center);
+    const du = v.dot(up);
+    const dr = v.dot(right);
+    u[0] = Math.min(u[0]!, du);
+    u[1] = Math.max(u[1]!, du);
+    r[0] = Math.min(r[0]!, dr);
+    r[1] = Math.max(r[1]!, dr);
+  }
+  return { center, normal, width: r[1]! - r[0]!, height: u[1]! - u[0]! };
+}
+
 function countGeometry(root: THREE.Object3D) {
   let verts = 0;
   let tris = 0;
@@ -901,6 +994,12 @@ async function init() {
     if (obj && pois.some((p) => p.id === id)) hitTargets.push({ id, box: new THREE.Box3().setFromObject(obj) });
   }
 
+  const arcadePoi = pois.find((p) => p.id === "arcade");
+  const arcadeScreenMesh = arcadeRoot && findNode(arcadeRoot, "Body_Screen_0");
+  if (arcadePoi && arcadeScreenMesh) {
+    arcadeScreen = measureScreen(arcadeScreenMesh as THREE.Mesh, poiPose(arcadePoi).camPos);
+  }
+
   // The Mac's display as an in-scene terminal.
   const macPoi = pois.find((p) => p.id === "mac");
   if (macPoi && macRoot) {
@@ -953,6 +1052,7 @@ async function init() {
   boot.line("ready", "good");
   track("boot_ready", { ms: Math.round(performance.now()), touch: isTouch() });
   if (overlayDeepLink) track("open_portfolio", { via: "deeplink" });
+  if (overlayFromHash() === "arcade") track("play_hoopzy", { via: "deeplink" });
   // The screen continues the same session the boot log started.
   macScreen?.setLines(boot.history().map(toScreenLine));
   renderer.render(scene, camera);
@@ -1020,12 +1120,16 @@ window.addEventListener("resize", () => requestRenderIfNotRequested(render));
 
 function applyUrlState() {
   // Overlay state works before the scene exists ("skip to text mode" during boot).
-  const overlay = (getHashParam("overlay") || "").toLowerCase();
-  if (overlay === "macos") {
+  const overlay = overlayFromHash();
+  // The game lives in the arcade: a deep link to it lands there.
+  if (overlay === "arcade" && (getHashParam("poi") || "").toLowerCase() !== "arcade") {
+    setHashParams({ poi: "arcade", overlay: "arcade" }, "replace");
+  }
+  if (overlay) {
     closeHelp(false);
-    void openMacOverlayInternal();
+    void openOverlayInternal(overlay);
   } else {
-    closeMacOverlayInternal();
+    closeOverlayInternal();
   }
 
   if (!gltfRoot || !pois.length) return;

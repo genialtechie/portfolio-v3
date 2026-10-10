@@ -14,7 +14,7 @@ These are the things I've built, plus some context on how and why. Each one is a
 - **[Custom commerce](#page=projects/custom-commerce)** · 2025 to 2026 · web, 3D\
   A 3D configurator and store for custom grillz. Over 5,000 automated quotes and five figures in revenue so far. [Watch the demo](https://commerce.magpollo.com/watch).
 - **[Hoopzy](#page=projects/hoopzy)** · 2025 to 2026 · web game\
-  A swipe to shoot basketball game with real physics. It's the arcade in this room. [Play it](https://hoopzy.fun).
+  A swipe to shoot basketball game with real physics. It's the arcade in this room, so you can play it there or at [hoopzy.fun](https://hoopzy.fun).
 
 ## Archived
 
