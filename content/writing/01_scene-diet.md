@@ -2,7 +2,7 @@
 
 `October 2026 · performance · three.js`
 
-The room you're standing in used to be a 25 MB download. On a fast connection that was about two seconds of a blank screen, and on a phone it was a lot longer. It's now 12.7 MB, and if you compare before and after, it looks exactly the same. Here's how I did it.
+The room you're standing in used to be a 25 MB download. On a fast connection that was about two seconds of a blank screen, and on a phone it was a lot longer. It's now 3.9 MB, and if you compare before and after, it looks exactly the same. I did it in two passes, and here's how.
 
 ## First, I looked inside the file
 
@@ -26,8 +26,12 @@ The original export now lives in `assets/source/`, and a script (`npm run assets
 
 To check nothing changed visually, I rendered three camera angles before and after in a headless browser and compared the pixels. The average difference was basically zero (0.0, 0.14 and 0.68 out of 255).
 
-## What's next
+## The second pass: real compression
 
-This pass didn't need any code changes, so it was safe to ship on its own. The next pass is real compression: meshopt for the geometry and KTX2 for the textures. KTX2 matters for more than download size. Right now 24 uncompressed 1024px textures take up roughly 130 MB of GPU memory, and that's the kind of thing that crashes tabs on phones.
+The first pass didn't need any code changes, so it was safe to ship on its own. The second pass was the real compression: KTX2 for the textures and meshopt for the geometry.
 
-<!-- TODO(haleem): update with the KTX2/meshopt results when that pass lands. -->
+KTX2 matters for more than download size. Normal images get unpacked to full size once they're on the GPU, so they eat memory no matter how small the file is. KTX2 textures stay compressed on the GPU. I used a different setting depending on what each texture does: the normal maps got a higher quality mode because the lighter one smears them, color textures were marked as color, and the data textures were kept linear.
+
+The file went from 12.7 MB to **3.9 MB**, and the textures went from about 77 MB of GPU memory to about 19 MB. The site needed two small additions to read the new formats, and the boot log now shows the smaller memory number when it loads.
+
+All together, that's 25 MB down to 3.9 MB, and it still looks the same.

@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { inject as injectVercelAnalytics } from "@vercel/analytics";
 import { injectSpeedInsights } from "@vercel/speed-insights";
 import { createBootLog, describeGpu, mb } from "./boot";
@@ -344,7 +346,9 @@ fill.position.set(-2.4, 2.2, -1.8);
 scene.add(fill);
 scene.add(fill.target);
 
-const loader = new GLTFLoader();
+// scene.glb uses KTX2 textures (stay compressed on the GPU) and meshopt geometry.
+const ktx2Loader = new KTX2Loader().setTranscoderPath("/basis/").detectSupport(renderer);
+const loader = new GLTFLoader().setKTX2Loader(ktx2Loader).setMeshoptDecoder(MeshoptDecoder);
 
 let gltfRoot: THREE.Object3D | null = null;
 let macRoot: THREE.Object3D | null = null;
@@ -804,12 +808,16 @@ function countGeometry(root: THREE.Object3D) {
   return { verts, tris, meshes, textures: [...textures] };
 }
 
-/** Uncompressed RGBA8 + full mip chain (~4/3). A proxy, not a driver-exact number. */
+/** Pixels × bytes-per-pixel × mip chain (~4/3). A proxy, not a driver-exact number. */
 function estimateVramBytes(textures: THREE.Texture[]) {
   let bytes = 0;
   for (const t of textures) {
     const img = t.image as { width?: number; height?: number } | undefined;
-    if (img?.width && img.height) bytes += img.width * img.height * 4 * (t.generateMipmaps ? 4 / 3 : 1);
+    if (!img?.width || !img.height) continue;
+    // Block-compressed formats (ETC2/BC7/ASTC 4x4) are ~1 byte per pixel; RGBA8 is 4.
+    const bpp = (t as THREE.CompressedTexture).isCompressedTexture ? 1 : 4;
+    const mips = (t as THREE.CompressedTexture).isCompressedTexture || t.generateMipmaps ? 4 / 3 : 1;
+    bytes += img.width * img.height * bpp * mips;
   }
   return bytes;
 }
