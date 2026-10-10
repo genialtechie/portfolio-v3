@@ -3,6 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { inject as injectVercelAnalytics } from "@vercel/analytics";
 import { injectSpeedInsights } from "@vercel/speed-insights";
+import { createBootLog, describeGpu, mb } from "./boot";
 
 type Poi = {
   id: string;
@@ -24,6 +25,9 @@ const poiLabel = qs<HTMLSpanElement>("#poi-label");
 const overlayRoot = qs<HTMLDivElement>("#overlay-root");
 const annotationLayer = qs<HTMLDivElement>("#annotation-layer");
 const appRoot = qs<HTMLDivElement>("#app");
+
+// Boot log first so it can report everything below, including failures.
+const boot = createBootLog(() => setHashParam("overlay", "macos"));
 
 // Vercel Web Analytics + Speed Insights (no-op locally; active on Vercel deployments).
 injectVercelAnalytics();
@@ -54,14 +58,17 @@ function requestRenderIfNotRequested(render: () => void) {
   requestAnimationFrame(() => render());
 }
 
+const MAX_DPR = 2;
+
 function resizeRendererToDisplaySize(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera) {
   const { clientWidth, clientHeight } = renderer.domElement;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
   const width = Math.max(1, Math.floor(clientWidth * dpr));
   const height = Math.max(1, Math.floor(clientHeight * dpr));
   const needResize = renderer.domElement.width !== width || renderer.domElement.height !== height;
   if (!needResize) return false;
 
+  renderer.setPixelRatio(dpr);
   renderer.setSize(clientWidth, clientHeight, false);
   camera.aspect = clientWidth / clientHeight;
   camera.updateProjectionMatrix();
@@ -167,11 +174,31 @@ function closeMacOverlayInternal() {
 }
 
 // Three.js setup
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true,
-  powerPreference: "high-performance",
-});
+function createRenderer() {
+  try {
+    return new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+const maybeRenderer = createRenderer();
+if (!maybeRenderer) {
+  boot.line("webgl2 unavailable → text mode", "warn");
+  void import("./overlay/macos").then((mod) => {
+    overlayRoot.hidden = false;
+    mod.mountMacOverlay(overlayRoot, { onClose: () => {} });
+  });
+  throw new Error("WebGL unavailable");
+}
+const renderer: THREE.WebGLRenderer = maybeRenderer;
+{
+  const rawDpr = window.devicePixelRatio || 1;
+  const capped = Math.min(rawDpr, MAX_DPR);
+  const dprText = capped < rawDpr ? `dpr ${rawDpr} → capped ${capped}` : `dpr ${rawDpr}`;
+  boot.line(`webgl2 ok · ${describeGpu(renderer.getContext())} · ${dprText}`);
+}
 renderer.setClearColor(0x000000, 0);
 
 // Color management (per three.js manual; avoid manual gamma hacks).
@@ -344,23 +371,13 @@ helpModal.addEventListener("click", (e) => {
   if (t.closest("[data-close-help]")) closeHelp(true);
 });
 
-function maybeShowHelpOnFirstLoad() {
-  try {
-    const seen = localStorage.getItem("helpSeen.v1");
-    if (seen) return;
-  } catch {
-    // ignore
-  }
-  openHelp();
-}
-
-function setActivePoiIndex(nextIndex: number) {
+function setActivePoiIndex(nextIndex: number, opts: { durationMs?: number } = {}) {
   if (!pois.length) return;
   activePoiIndex = (nextIndex + pois.length) % pois.length;
   const poi = pois[activePoiIndex]!;
   poiLabel.textContent = poi ? `POI: ${poi.label}` : "";
   setAnnotationText(annotationEl, poi ? poi.label : "");
-  focusOnPoi(poi);
+  focusOnPoi(poi, opts);
 }
 
 let transition:
@@ -378,24 +395,31 @@ const tmpV = new THREE.Vector3();
 const tmpV2 = new THREE.Vector3();
 const tmpBox = new THREE.Box3();
 
-function focusOnPoi(poi: Poi) {
-  if (!gltfRoot) return;
+const prefersReducedMotion = () =>
+  window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 
-  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-  const durationMs = reduceMotion ? 0 : 750;
-
+function poiPose(poi: Poi) {
   const target = poi.anchor.getWorldPosition(tmpV).clone();
 
   // Keep camera inside the room by looking from target toward the scene center.
-  const center = tmpBox.setFromObject(gltfRoot).getCenter(tmpV2).clone();
+  const center = tmpBox.setFromObject(gltfRoot!).getCenter(tmpV2).clone();
   const dirToCenter = center.clone().sub(target).normalize();
 
   const distance = 1.7;
   const height = 0.45;
   const camPos = target
     .clone()
-    .add(dirToCenter.multiplyScalar(distance))
+    .add(dirToCenter.clone().multiplyScalar(distance))
     .add(new THREE.Vector3(0, height, 0));
+
+  return { target, camPos, dirToCenter };
+}
+
+function focusOnPoi(poi: Poi, opts: { durationMs?: number } = {}) {
+  if (!gltfRoot) return;
+
+  const durationMs = prefersReducedMotion() ? 0 : (opts.durationMs ?? 750);
+  const { target, camPos } = poiPose(poi);
 
   controls.enabled = false;
 
@@ -563,10 +587,13 @@ function render() {
 
     camera.position.lerpVectors(transition.fromPos, transition.toPos, k);
     controls.target.lerpVectors(transition.fromTarget, transition.toTarget, k);
-    controls.update();
+    // lookAt instead of controls.update(): OrbitControls clamps to minDistance,
+    // which would snap the intro's close-up out to the orbit range.
+    camera.lookAt(controls.target);
 
     if (t >= 1) {
       transition = null;
+      controls.update();
       controls.enabled = true;
     } else {
       requestRenderIfNotRequested(render);
@@ -588,13 +615,74 @@ function render() {
   renderer.render(scene, camera);
 }
 
+function countGeometry(root: THREE.Object3D) {
+  let verts = 0;
+  let tris = 0;
+  let meshes = 0;
+  const textures = new Set<THREE.Texture>();
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    meshes++;
+    const g = mesh.geometry;
+    verts += g.attributes.position?.count ?? 0;
+    tris += (g.index ? g.index.count : (g.attributes.position?.count ?? 0)) / 3;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const m of mats) {
+      for (const v of Object.values(m)) if ((v as THREE.Texture)?.isTexture) textures.add(v as THREE.Texture);
+    }
+  });
+  return { verts, tris, meshes, textures: [...textures] };
+}
+
+/** Uncompressed RGBA8 + full mip chain (~4/3). A proxy, not a driver-exact number. */
+function estimateVramBytes(textures: THREE.Texture[]) {
+  let bytes = 0;
+  for (const t of textures) {
+    const img = t.image as { width?: number; height?: number } | undefined;
+    if (img?.width && img.height) bytes += img.width * img.height * 4 * (t.generateMipmaps ? 4 / 3 : 1);
+  }
+  return bytes;
+}
+
+const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n)));
+const secs = (ms: number) => `${(ms / 1000).toFixed(2)}s`;
+
+async function loadScene() {
+  const t0 = performance.now();
+  let tFetched = 0;
+  const total = __SCENE_BYTES__;
+
+  const slowTimer = window.setTimeout(() => {
+    boot.line("slow network · [enter] for text mode while this finishes", "warn");
+  }, 8000);
+
+  try {
+    const gltf = await loader.loadAsync("/scene.glb", (e) => {
+      const tot = e.lengthComputable && e.total ? e.total : total;
+      boot.progress("fetch scene.glb", e.loaded, tot);
+      if (e.loaded >= tot && !tFetched) tFetched = performance.now();
+    });
+    if (!tFetched) tFetched = performance.now();
+    boot.progressDone(`fetch scene.glb · ${mb(total)} MB in ${secs(tFetched - t0)}`);
+    return { gltf, tFetched };
+  } finally {
+    window.clearTimeout(slowTimer);
+  }
+}
+
 async function init() {
-  const gltf = await loader.loadAsync("/scene.glb");
+  const { gltf, tFetched } = await loadScene();
   gltfRoot = gltf.scene;
 
   // Normalize units: the room appears authored in inches; scale scene to meters.
   gltfRoot.scale.setScalar(0.0254);
   scene.add(gltfRoot);
+
+  const geo = countGeometry(gltfRoot);
+  boot.line(
+    `parse gltf · ${k(geo.verts)} verts · ${k(geo.tris)} tris · ${geo.meshes} meshes · ${secs(performance.now() - tFetched)}`,
+  );
 
   // Aim key/fill at the scene center so relayouts of the GLB don't break the look.
   const center = tmpBox.setFromObject(gltfRoot).getCenter(tmpV2);
@@ -617,35 +705,98 @@ async function init() {
     });
   }
 
+  // GPU warm-up while the boot screen is still up, so the first visible frame doesn't hitch.
+  resizeRendererToDisplaySize(renderer, camera);
+  let t = performance.now();
+  for (const tex of geo.textures) renderer.initTexture(tex);
+  boot.line(
+    `upload ${geo.textures.length} textures · ~${mb(estimateVramBytes(geo.textures))} MB vram · ${secs(performance.now() - t)}`,
+  );
+
+  t = performance.now();
+  await renderer.compileAsync(scene, camera);
+  const programs = (renderer.info.programs ?? []).length;
+  boot.line(`compile shaders · ${programs} programs · ${secs(performance.now() - t)}`);
+
   if (!pois.length) {
-    poiLabel.textContent = "No POI anchors found (need POI_*_ANCHOR groups in scene.glb)";
+    boot.line("no POI anchors found (need POI_*_ANCHOR in scene.glb)", "warn");
+    poiLabel.textContent = "No POI anchors found";
+    void boot.dismiss(400);
+    appRoot.removeAttribute("data-booting");
     requestRenderIfNotRequested(render);
     return;
   }
 
-  // Initial navigation: if URL has a POI, respect it. Otherwise default to the first POI
-  // but avoid creating a history entry on initial load.
+  // Land on the Mac unless the URL asks for something else. The intro is
+  // "you were inside the Mac": start close on its dark screen, then pull back.
   const fromHash = (getHashParam("poi") || "").toLowerCase();
-  if (!fromHash) {
-    const first = pois[0]!;
-    setHashParam("poi", first.id, "replace");
+  if (!fromHash) setHashParam("poi", pois.some((p) => p.id === "mac") ? "mac" : pois[0]!.id, "replace");
+  const targetId = (getHashParam("poi") || "").toLowerCase();
+  const targetIdx = Math.max(0, pois.findIndex((p) => p.id === targetId));
+  const targetPoi = pois[targetIdx]!;
+
+  const pullBack = targetPoi.id === "mac" && !prefersReducedMotion();
+  if (pullBack) {
+    const { target, dirToCenter } = poiPose(targetPoi);
+    // Close enough that the dark display overfills the frame on any aspect ratio.
+    // Display is roughly 0.26m x 0.17m in world units (tuned against renders).
+    resizeRendererToDisplaySize(renderer, camera);
+    const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const fitW = 0.13 / (halfTan * camera.aspect);
+    const fitH = 0.085 / halfTan;
+    const dist = Math.min(fitW, fitH) * 0.9;
+    const flat = new THREE.Vector3(dirToCenter.x, 0, dirToCenter.z).normalize();
+    camera.position.copy(target).addScaledVector(flat, dist);
+    controls.target.copy(target);
+    camera.lookAt(target);
   }
 
-  applyUrlState();
+  renderer.render(scene, camera);
+  boot.line(`ready · ${secs(performance.now())} · ${renderer.info.render.calls} draw calls`, "good");
+
+  // Hold the final line for a beat, then hand off.
+  await new Promise((r) => window.setTimeout(r, 450));
+
+  if (pullBack) {
+    // Fade the log off the "screen" first, then pull back into the room.
+    void boot.dismiss(450);
+    await new Promise((r) => window.setTimeout(r, 300));
+    setActivePoiIndex(targetIdx, { durationMs: 1600 });
+    // HUD + annotation arrive once the camera has settled, not over the close-up.
+    window.setTimeout(() => appRoot.removeAttribute("data-booting"), 1500);
+  } else {
+    void boot.dismiss(prefersReducedMotion() ? 200 : 400);
+    appRoot.removeAttribute("data-booting");
+  }
+  applyUrlState(); // focuses the POI (if not already) + overlay deep links
 
   requestRenderIfNotRequested(render);
-  maybeShowHelpOnFirstLoad();
 }
+
+applyUrlState();
 
 void init().catch((err) => {
   console.error(err);
-  poiLabel.textContent = "Failed to load scene.glb (check console)";
-  requestRenderIfNotRequested(render);
+  const msg = err instanceof Error ? err.message : String(err);
+  boot.line(`error: ${msg.slice(0, 120)}`, "warn");
+  boot.line("→ text mode", "muted");
+  appRoot.removeAttribute("data-booting");
+  setHashParam("overlay", "macos", "replace");
+  applyUrlState();
 });
 
 window.addEventListener("resize", () => requestRenderIfNotRequested(render));
 
 function applyUrlState() {
+  // Overlay state works before the scene exists ("skip to text mode" during boot).
+  const overlay = (getHashParam("overlay") || "").toLowerCase();
+  if (overlay === "macos") {
+    closeHelp(false);
+    void openMacOverlayInternal();
+  } else {
+    closeMacOverlayInternal();
+  }
+
   if (!gltfRoot || !pois.length) return;
 
   const poiId = (getHashParam("poi") || "").toLowerCase();
@@ -662,15 +813,6 @@ function applyUrlState() {
     // No POI specified: default to the first POI.
     setHashParam("poi", pois[0]!.id, "replace");
     if (activePoiIndex !== 0) setActivePoiIndex(0);
-  }
-
-  const overlay = (getHashParam("overlay") || "").toLowerCase();
-  const wantOverlay = overlay === "macos";
-  if (wantOverlay) {
-    closeHelp(false);
-    void openMacOverlayInternal();
-  } else {
-    closeMacOverlayInternal();
   }
 }
 

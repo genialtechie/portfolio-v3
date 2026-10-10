@@ -626,3 +626,122 @@ button:active {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
+
+/* Boot log (loading screen). Visible from first paint: plain HTML + this CSS. */
+#boot[hidden] {
+  display: none;
+}
+
+#boot {
+  position: absolute;
+  inset: 0;
+  /* Below #overlay-root (10) so "skip to text mode" opens on top while loading continues. */
+  z-index: 8;
+  display: flex;
+  align-items: flex-end;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom));
+  /* Matches the MacBook's dark screen so the fade reads as "this was the screen". */
+  background: #000;
+  color: rgba(233, 236, 242, 0.92);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+  transition: opacity var(--boot-fade, 400ms) ease;
+}
+
+#boot.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#boot .boot-inner {
+  width: min(720px, 100%);
+}
+
+#boot .boot-line {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#boot .boot-prompt {
+  color: #6ee7ff;
+}
+
+#boot .boot-ts {
+  color: rgba(233, 236, 242, 0.45);
+}
+
+#boot .is-live {
+  color: rgba(233, 236, 242, 0.75);
+}
+
+#boot .is-good {
+  color: #8efc8e;
+}
+
+#boot .is-warn {
+  color: #ffd166;
+}
+
+#boot .is-muted {
+  color: rgba(233, 236, 242, 0.55);
+}
+
+#boot .boot-cursor {
+  color: rgba(233, 236, 242, 0.7);
+  animation: boot-blink 1.1s steps(1) infinite;
+}
+
+#boot #boot-skip {
+  margin-top: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: rgba(233, 236, 242, 0.45);
+  cursor: pointer;
+}
+
+#boot #boot-skip:hover,
+#boot #boot-skip:focus-visible {
+  color: #6ee7ff;
+  outline: none;
+  text-decoration: underline;
+}
+
+@keyframes boot-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #boot .boot-cursor {
+    animation: none;
+  }
+}
+
+@media (max-width: 520px) {
+  #boot {
+    font-size: 11.5px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Keep the scene HUD out of the way until the handoff. */
+#app[data-booting] #hud,
+#app[data-booting] #annotation-layer {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#hud,
+#annotation-layer {
+  transition: opacity 400ms ease 300ms;
+}

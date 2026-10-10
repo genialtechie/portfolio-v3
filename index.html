@@ -102,10 +102,13 @@
       }
     </script>
 
+    <!-- Start the scene download before any JS runs; GLTFLoader's fetch reuses it. -->
+    <link rel="preload" href="/scene.glb" as="fetch" type="model/gltf-binary" crossorigin="anonymous" />
+
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div id="app">
+    <div id="app" data-booting>
       <h1 class="sr-only">Haleem Bello, Full Stack Developer</h1>
       <p class="sr-only">
         Performance-first 3D portfolio. Use Prev/Next or Left/Right arrows to cycle points of interest. Double tap the
@@ -127,6 +130,15 @@
           </p>
         </div>
       </noscript>
+
+      <section id="boot" aria-label="Loading">
+        <div class="boot-inner">
+          <p class="boot-line boot-cmd"><span class="boot-prompt">haleem@genialtechie:~$</span> ./portfolio</p>
+          <div id="boot-log" role="log" aria-live="polite"></div>
+          <p class="boot-line boot-cursor" aria-hidden="true">&#9608;</p>
+          <button id="boot-skip" type="button">[enter] skip to text mode</button>
+        </div>
+      </section>
 
       <canvas id="c" aria-label="3D portfolio scene"></canvas>
 
