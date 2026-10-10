@@ -10,6 +10,7 @@ export type EventName =
   | "open_page"
   | "play_hoopzy"
   | "close_hoopzy"
+  | "sound_toggle"
   | "hint_shown"
   | "hint_followed";
 

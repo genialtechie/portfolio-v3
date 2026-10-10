@@ -887,9 +887,51 @@ button:active {
   pointer-events: none;
 }
 
-#hud,
+/* The status bar slides up into place after the pull-back. */
+#app[data-booting] #hud {
+  transform: translateY(100%);
+}
+
+#hud {
+  transition:
+    opacity 300ms ease 250ms,
+    transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1) 250ms;
+}
+
 #annotation-layer {
   transition: opacity 400ms ease 300ms;
+}
+
+#sound.is-on {
+  color: var(--accent);
+}
+
+/* Portfolio pages arrive with a short fade instead of popping in. */
+#overlay-root .md-article,
+#overlay-root .tui {
+  animation: page-in 160ms ease-out both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #hud {
+    transition: opacity 200ms ease;
+  }
+
+  #app[data-booting] #hud {
+    transform: none;
+  }
+
+  #overlay-root .md-article,
+  #overlay-root .tui {
+    animation: none;
+  }
 }
 
 #poi-action[hidden],

@@ -9,6 +9,8 @@ import { createBootLog, describeGpu, mb } from "./boot";
 import { createMacScreen, type MacScreen, type ScreenLine } from "./macScreen";
 import { track } from "./analytics";
 import { createHints } from "./hints";
+import { createSound } from "./sound";
+import { createArcadeScreen } from "./arcadeScreen";
 
 type Poi = {
   id: string;
@@ -34,6 +36,23 @@ const isTouch = () => window.matchMedia?.("(hover: none)")?.matches ?? false;
 const overlayRoot = qs<HTMLDivElement>("#overlay-root");
 const annotationLayer = qs<HTMLDivElement>("#annotation-layer");
 const appRoot = qs<HTMLDivElement>("#app");
+const soundBtn = qs<HTMLButtonElement>("#sound");
+
+const sound = createSound((on) => {
+  renderSoundButton(on);
+  track("sound_toggle", { on });
+});
+function renderSoundButton(on: boolean) {
+  soundBtn.textContent = on ? "♪ on" : "♪ off";
+  soundBtn.setAttribute("aria-pressed", String(on));
+  soundBtn.classList.toggle("is-on", on);
+}
+renderSoundButton(sound.on);
+soundBtn.addEventListener("click", (e) => {
+  sound.toggle();
+  // After a mouse click, give Enter back to the scene ("open what you're looking at").
+  if (e.detail > 0) soundBtn.blur();
+});
 
 // Boot log first so it can report everything below, including failures.
 const boot = createBootLog(() => {
@@ -207,6 +226,8 @@ async function openOverlayInternal(kind: OverlayKind) {
   if (overlayKind) closeOverlayInternal({ pullBack: false });
   overlayKind = kind;
   controls.enabled = false;
+  sound.setScene(kind);
+  if (kind === "macos") sound.cue("seek");
 
   overlayOpening = (async () => {
     // Start fetching the overlay chunk while the camera moves in.
@@ -253,6 +274,9 @@ function closeOverlayInternal(opts: { pullBack?: boolean } = {}) {
   overlayUnmount = null;
   if (!transition) controls.enabled = true;
 
+  sound.setScene("room");
+  if (kind === "macos") sound.cue("eject");
+  if (kind === "arcade") arcadeAttract?.refresh(); // a new best score shows on the cabinet
   if (kind === "arcade" && wasMounted) {
     track("close_hoopzy", { seconds: Math.round((performance.now() - arcadeOpenedAt) / 1000) });
   }
@@ -412,6 +436,7 @@ let gltfRoot: THREE.Object3D | null = null;
 let macRoot: THREE.Object3D | null = null;
 let macScreen: MacScreen | null = null;
 /** The arcade cabinet's screen, measured from its mesh so the zoom lands square on it. */
+let arcadeAttract: ReturnType<typeof createArcadeScreen> = null;
 let arcadeScreen: { center: THREE.Vector3; normal: THREE.Vector3; width: number; height: number } | null = null;
 let pois: Poi[] = [];
 let activePoiIndex = -1;
@@ -486,6 +511,11 @@ helpModal.innerHTML = `
               >Creative Commons Attribution</a
             >.
           </p>
+          <p>
+            Sounds: "Lofi Gaming" by zephiramusic, computer startup by freesound_community, mouse click by
+            universfield and coin by minelaugh2 (all from Pixabay), UI ticks by Kenney (CC0), and Amiga 600 floppy
+            sounds from OpenGameArt.
+          </p>
         </div>
       </details>
     </div>
@@ -549,7 +579,9 @@ helpModal.addEventListener("click", (e) => {
 
 function setActivePoiIndex(nextIndex: number, opts: { durationMs?: number } = {}) {
   if (!pois.length) return;
+  const prevIndex = activePoiIndex;
   activePoiIndex = (nextIndex + pois.length) % pois.length;
+  if (prevIndex >= 0 && prevIndex !== activePoiIndex) sound.cue("tick");
   const poi = pois[activePoiIndex]!;
   poiLabel.textContent = "";
   const entry = tourEntry(poi.id);
@@ -596,9 +628,11 @@ function runPoiAction(poi: Poi | undefined, via: "click" | "enter" | "button") {
   if (!poi) return;
   if (poi.id === "mac") {
     track("open_portfolio", { via });
+    sound.cue("click");
     setHashParams({ poi: "mac", overlay: "macos" });
   } else if (poi.id === "arcade") {
     track("play_hoopzy", { via });
+    sound.cue("coin");
     hints.followed("arcade-intro");
     setHashParams({ poi: "arcade", overlay: "arcade" });
   }
@@ -781,7 +815,9 @@ canvas.addEventListener("pointermove", (e) => {
     return;
   }
   if (e.pointerType === "mouse" && !transition) {
-    canvas.style.cursor = poiAt(e.clientX, e.clientY) ? "pointer" : "";
+    const id = poiAt(e.clientX, e.clientY);
+    canvas.style.cursor = id ? "pointer" : "";
+    setHovered(id);
   }
 });
 
@@ -797,6 +833,33 @@ canvas.addEventListener("pointerup", (e) => {
   if (active?.id === id) runPoiAction(active, "click");
   else setHashParam("poi", id);
 });
+
+canvas.addEventListener("pointerleave", () => setHovered(null));
+
+// Hovering a prop brightens its screen a little, so it reads as clickable.
+// Only renders while the glow is changing.
+const SCREEN_IDLE = 0.88;
+const SCREEN_HOVER = 1;
+let hoveredId: string | null = null;
+const screenGlow = { mac: SCREEN_IDLE, arcade: SCREEN_IDLE };
+function setHovered(id: string | null) {
+  if (id === hoveredId) return;
+  hoveredId = id;
+  requestRenderIfNotRequested(render);
+}
+function stepScreenGlow() {
+  let moving = false;
+  for (const id of ["mac", "arcade"] as const) {
+    const target = hoveredId === id && overlayRoot.hidden ? SCREEN_HOVER : SCREEN_IDLE;
+    const cur = screenGlow[id];
+    const next = Math.abs(target - cur) < 0.004 ? target : cur + (target - cur) * 0.25;
+    if (next !== target) moving = true;
+    screenGlow[id] = next;
+  }
+  (macScreen?.mesh.material as THREE.MeshBasicMaterial | undefined)?.color.setScalar(screenGlow.mac);
+  arcadeAttract?.material.color.setScalar(screenGlow.arcade);
+  return moving;
+}
 
 canvas.addEventListener("pointercancel", () => {
   press = null;
@@ -845,6 +908,7 @@ function render() {
     }
   }
 
+  if (stepScreenGlow()) requestRenderIfNotRequested(render);
   renderer.render(scene, camera);
 }
 
@@ -998,6 +1062,11 @@ async function init() {
   const arcadeScreenMesh = arcadeRoot && findNode(arcadeRoot, "Body_Screen_0");
   if (arcadePoi && arcadeScreenMesh) {
     arcadeScreen = measureScreen(arcadeScreenMesh as THREE.Mesh, poiPose(arcadePoi).camPos);
+    arcadeAttract = createArcadeScreen(
+      arcadeScreenMesh as THREE.Mesh,
+      renderer.capabilities.getMaxAnisotropy(),
+      isTouch(),
+    );
   }
 
   // The Mac's display as an in-scene terminal.
