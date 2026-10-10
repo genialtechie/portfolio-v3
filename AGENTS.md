@@ -1,6 +1,6 @@
 # Agent Guide (portfolio-v3)
 
-This repo is a performance-first 3D portfolio site. The homepage is a guided 3D room with a few "attractions" (POIs). Users cycle POIs with `Prev/Next` and arrow keys, the camera animates between POIs, and a small orbit is enabled only while focused on a POI. Double-clicking the MacBook opens a full-screen macOS-inspired portfolio UI.
+This repo is a performance-first 3D portfolio site. The homepage is a guided 3D room with a few "attractions" (POIs). The tour has two stops, the MacBook (portfolio) and the arcade (Hoopzy). Users move between them with the status bar tabs, arrow keys or 1/2, the camera animates between stops, and a small bounded orbit is enabled only while focused on a stop. Clicking the MacBook (or pressing Enter) zooms into its screen and opens the full-screen terminal-style portfolio UI.
 
 The core rules below are intentionally strict. The point is to ship a site that feels instant, not a tech demo that happens to be a portfolio.
 
@@ -44,7 +44,7 @@ Do not add new behavior that conflicts with these without a clear written ration
   - Transitions are animated with an ease function and are interruptible (user can quickly go `Next` multiple times).
   - OrbitControls is allowed only after arriving at a POI, and should be constrained to "tiny orbit" ranges.
 - MacBook:
-  - Double-click on the MacBook opens the macOS overlay full screen.
+  - A single click/tap on the MacBook (or Enter) zooms into the screen and opens the overlay full screen.
   - Closing the overlay returns to the 3D scene without a full page refresh.
   - Overlay UI is lazy-loaded (separate chunk/module).
 
@@ -146,7 +146,7 @@ Reference: cleanup + disposal manual pages (see links above).
 
 - Pointer:
   - Single click selects a POI if it is the intended interaction.
-  - Double click on the MacBook opens the overlay.
+  - Single click on the current stop runs its action; clicking the other prop navigates there. Drags never count as clicks.
   - Avoid accidental activation during camera transitions (debounce/lock input during transition if needed).
 - Keyboard:
   - Left/Right arrows cycle POIs.
@@ -230,3 +230,24 @@ Do not guess performance.
   - runtime bytes
   - parse/compile cost
   - long-term maintenance risk
+
+## Voice (all site copy)
+
+All content in `content/` is written as Haleem, in first person. Match the tone of the original journal intro (`content/writing/00_intro.md`): plain, conversational, like explaining something to a friend.
+
+Do:
+
+- Use short, simple sentences and everyday words.
+- Say what happened and why, with real numbers where they exist.
+- Keep his own phrasing when he gives it ("Nothing too polished, just a place to keep receipts").
+- Mark anything unverified with an HTML comment: `<!-- TODO(haleem): ... -->`. Never invent metrics, clients or outcomes.
+
+Don't:
+
+- No em dashes or en dashes. No semicolons.
+- No "X, not Y" or "it isn't X, it's Y" reversals.
+- No tidy one-line morals or slogans at the end of a section.
+- No buzzwords ("leverage", "seamless", "robust", "delve", "game-changer").
+- Don't stack bold labels on every paragraph. Use plain headings and normal paragraphs.
+- Don't name Magpollo clients. Don't publish availability or relocation preferences.
+- Write product names the way they're actually written (Imaan, not IMAAN).
