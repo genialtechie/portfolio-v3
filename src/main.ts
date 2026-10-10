@@ -307,20 +307,23 @@ helpModal.setAttribute("aria-labelledby", "help-title");
 helpModal.innerHTML = `
   <div class="help-scrim" data-close-help="1"></div>
   <div class="help-card" role="document">
-    <div class="help-head">
-      <div class="help-title" id="help-title">Tips & Credits</div>
-      <button type="button" class="help-close" data-close-help="1" aria-label="Close help">Close</button>
+    <div class="help-head" aria-hidden="true">
+      <span>PORTFOLIO(1)</span><span class="help-head-mid">genialtechie manual</span><span>PORTFOLIO(1)</span>
     </div>
+    <h2 class="help-title" id="help-title">portfolio — a room you can look around</h2>
     <div class="help-body" id="help-desc">
-      <ul class="help-list">
-        <li><b>Prev/Next</b> (or Left/Right arrows) moves between the MacBook and the arcade.</li>
-        <li><b>Click / tap</b> the MacBook (or press <b>Enter</b>) to open the portfolio.</li>
-        <li><b>Drag</b> to orbit a little around the focused item.</li>
-        <li><b>Esc</b> closes the portfolio.</li>
-      </ul>
+      <h3>CONTROLS</h3>
+      <dl class="help-keys">
+        <dt><kbd>←</kbd> <kbd>→</kbd> or <kbd>1</kbd> <kbd>2</kbd></dt><dd>move between the MacBook and the arcade</dd>
+        <dt><kbd>enter</kbd> or click</dt><dd>open what you're looking at</dd>
+        <dt>drag</dt><dd>orbit a little around it</dd>
+        <dt><kbd>esc</kbd></dt><dd>close the portfolio</dd>
+        <dt><kbd>?</kbd></dt><dd>this page</dd>
+      </dl>
+      <p class="help-touch">On touch screens: tap the tabs below to move, tap the Mac to open.</p>
 
       <details class="help-details">
-        <summary>3D model credits (CC BY 4.0)</summary>
+        <summary>CREDITS <span>3D models, CC BY 4.0</span></summary>
         <div class="help-credits">
           <p>
             "<a href="https://skfb.ly/6SBrS" target="_blank" rel="noopener noreferrer">Final Fight Arcade</a>" by brysew is
@@ -360,6 +363,7 @@ helpModal.innerHTML = `
         </div>
       </details>
     </div>
+    <button type="button" class="help-close" data-close-help="1" aria-label="Close help">[esc] close</button>
   </div>
 `;
 appRoot.appendChild(helpModal);
@@ -546,10 +550,11 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (helpOpen) {
-    if (e.key === "Escape") closeHelp(true);
+    if (e.key === "Escape" || e.key === "?") closeHelp(true);
     return;
   }
 
+  if (e.key === "?") openHelp();
   if (e.key === "ArrowLeft") prevPoi();
   if (e.key === "ArrowRight") nextPoi();
   // Number keys jump to a stop, matching the "1:portfolio 2:hoopzy" tabs.

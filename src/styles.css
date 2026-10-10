@@ -238,51 +238,83 @@ button:active {
 #help-modal .help-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.38);
+  background: rgba(0, 0, 0, 0.55);
 }
 
+/* Styled as a man page: same terminal language as the boot log and overlay. */
 #help-modal .help-card {
   position: relative;
-  width: min(720px, calc(100vw - 32px));
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  width: min(640px, calc(100vw - 32px));
   max-height: min(760px, calc(100dvh - 48px));
   overflow: auto;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(12px);
-  padding: 14px 14px 16px;
+  background: #000;
+  border: 1px solid rgba(233, 236, 242, 0.16);
+  border-radius: 0;
+  padding: 18px 22px 20px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  font-variant-ligatures: none;
+  color: rgba(233, 236, 242, 0.88);
 }
 
 #help-modal .help-head {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(233, 236, 242, 0.12);
-  margin-bottom: 12px;
+  gap: 12px;
+  color: rgba(233, 236, 242, 0.45);
+  margin-bottom: 16px;
+}
+
+#help-modal .help-head-mid {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #help-modal .help-title {
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  margin: 0 0 18px;
+  font-size: inherit;
+  font-weight: 600;
+  color: #fff;
 }
 
-#help-modal .help-close {
-  padding: 6px 10px;
-  border-radius: 10px;
+#help-modal h3 {
+  margin: 0 0 6px;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.04em;
 }
 
-#help-modal .help-body {
-  color: rgba(233, 236, 242, 0.86);
-  font-size: 14px;
-  line-height: 1.45;
+#help-modal .help-keys {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 20px;
+  margin: 0 0 12px 2ch;
 }
 
-#help-modal .help-list {
-  margin: 0 0 12px;
-  padding-left: 18px;
+#help-modal .help-keys dt {
+  color: rgba(233, 236, 242, 0.6);
+}
+
+#help-modal .help-keys dd {
+  margin: 0;
+}
+
+#help-modal kbd {
+  font: inherit;
+  color: #fff;
+  padding: 0 4px;
+  border: 1px solid rgba(233, 236, 242, 0.28);
+}
+
+#help-modal .help-touch {
+  margin: 0 0 4px 2ch;
+  color: rgba(233, 236, 242, 0.5);
 }
 
 #help-modal a {
@@ -296,23 +328,52 @@ button:active {
 }
 
 #help-modal details {
-  margin-top: 10px;
-  border-top: 1px solid rgba(233, 236, 242, 0.12);
-  padding-top: 10px;
+  margin-top: 16px;
 }
 
 #help-modal summary {
   cursor: pointer;
-  color: rgba(233, 236, 242, 0.86);
-  font-weight: 650;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+#help-modal summary span {
+  color: rgba(233, 236, 242, 0.45);
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-left: 1ch;
+}
+
+#help-modal .help-credits {
+  margin-left: 2ch;
 }
 
 #help-modal .help-credits p {
-  margin: 10px 0 0;
-  color: rgba(233, 236, 242, 0.80);
+  margin: 8px 0 0;
+  color: rgba(233, 236, 242, 0.7);
 }
 
-@media (max-width: 420px) {
+#help-modal .help-close {
+  display: block;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  color: rgba(233, 236, 242, 0.45);
+  cursor: pointer;
+}
+
+#help-modal .help-close:hover,
+#help-modal .help-close:focus-visible {
+  color: var(--accent);
+  outline: none;
+  text-decoration: underline;
+}
+
+@media (max-width: 520px) {
   #help-modal {
     padding: 12px;
   }
@@ -320,7 +381,17 @@ button:active {
   #help-modal .help-card {
     width: calc(100vw - 24px);
     max-height: calc(100dvh - 24px);
-    padding: 12px 12px 14px;
+    padding: 14px 14px 16px;
+    font-size: 12px;
+  }
+
+  #help-modal .help-keys {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  #help-modal .help-keys dd {
+    margin-bottom: 6px;
   }
 }
 
