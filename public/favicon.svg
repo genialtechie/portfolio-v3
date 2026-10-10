@@ -1,12 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6ee7ff"/>
-      <stop offset="1" stop-color="#0b0c10"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="12" fill="#0b0c10"/>
-  <rect x="3" y="3" width="58" height="58" rx="11" fill="none" stroke="rgba(110,231,255,0.55)" stroke-width="2"/>
-  <path d="M16 46V18h6v10h12V18h6v28h-6V34H22v12h-6Z" fill="url(#g)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Haleem Bello">
+  <rect width="64" height="64" rx="14" fill="#050607"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="12.5" fill="none" stroke="#6ee7ff" stroke-opacity="0.35" stroke-width="2"/>
+  <path d="M13.64 47.0V17.8H19.64V25.0L19.439999999999998 29.2H19.560000000000002Q19.880000000000003 27.36 21.04 26.2Q22.64 24.599999999999998 25.36 24.599999999999998Q28.56 24.599999999999998 30.5 26.839999999999996Q32.44 29.08 32.44 32.8V47.0H26.439999999999998V33.4Q26.439999999999998 31.68 25.54 30.740000000000002Q24.64 29.8 23.0 29.8Q21.4 29.8 20.52 30.740000000000002Q19.64 31.68 19.64 33.4V47.0Z" fill="#e9ecf2"/>
+  <rect x="38" y="31" width="14" height="16" rx="1.5" fill="#6ee7ff"/>
 </svg>
-
