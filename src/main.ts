@@ -9,7 +9,7 @@ import { createBootLog, describeGpu, mb } from "./boot";
 import { createMacScreen, type MacScreen, type ScreenLine } from "./macScreen";
 import { track } from "./analytics";
 import { createHints } from "./hints";
-import { createSound } from "./sound";
+import { createSound, type SoundState } from "./sound";
 import { createArcadeScreen } from "./arcadeScreen";
 
 type Poi = {
@@ -38,22 +38,26 @@ const annotationLayer = qs<HTMLDivElement>("#annotation-layer");
 const appRoot = qs<HTMLDivElement>("#app");
 const soundBtn = qs<HTMLButtonElement>("#sound");
 
-const sound = createSound((on) => {
-  renderSoundButton(on);
-  track("sound_toggle", { on });
+const sound = createSound((state, fromUser) => {
+  renderSoundButton(state);
+  if (fromUser) track("sound_toggle", { on: state !== "off" });
 });
 // Speaker icon: sound waves when on, a cross when off.
 const SPEAKER = `<path d="M3 9.5h3.5L11 5.5v13l-4.5-4H3z" fill="currentColor" stroke="none"/>`;
 const WAVES = `<path d="M14.5 9a4 4 0 0 1 0 6M17 6.5a7.5 7.5 0 0 1 0 11"/>`;
 const CROSS = `<path d="M15 9.5l5 5M20 9.5l-5 5"/>`;
-function renderSoundButton(on: boolean) {
-  soundBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${SPEAKER}${on ? WAVES : CROSS}</svg><span>${on ? "on" : "off"}</span>`;
-  soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  soundBtn.title = on ? "Sound on" : "Sound off";
+function renderSoundButton(state: SoundState) {
+  const on = state !== "off";
+  const label = state === "waiting" ? "on · click to play" : on ? "on" : "off";
+  soundBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${SPEAKER}${on ? WAVES : CROSS}</svg><span>${label}</span>`;
+  const desc = state === "waiting" ? "Sound on, starts when you click anywhere" : on ? "Sound on" : "Sound off";
+  soundBtn.setAttribute("aria-label", desc);
+  soundBtn.title = desc;
   soundBtn.setAttribute("aria-pressed", String(on));
   soundBtn.classList.toggle("is-on", on);
+  soundBtn.classList.toggle("is-waiting", state === "waiting");
 }
-renderSoundButton(sound.on);
+renderSoundButton(sound.on ? "on" : "off");
 soundBtn.addEventListener("click", (e) => {
   sound.toggle();
   // After a mouse click, give Enter back to the scene ("open what you're looking at").
@@ -1011,7 +1015,25 @@ async function loadScene() {
   }
 }
 
+// Sound left on from a previous visit. The startup sound belongs to the boot,
+// but browsers hold audio until the visitor interacts (except on sites they
+// visit a lot). If audio is already allowed, the machine powers on with the
+// boot; otherwise the loop starts on their first click, tap or key, and the
+// status bar says so. The boot never waits for input.
+let startupAt = 0;
+
+async function powerOn() {
+  if (!sound.wantsStartup) return;
+  if (!overlayFromHash() && (await sound.canAutoplay())) {
+    sound.powerOn();
+    startupAt = performance.now();
+    return;
+  }
+  sound.resumeOnFirstInteraction();
+}
+
 async function init() {
+  void powerOn();
   const { gltf, tFetched } = await loadScene();
   gltfRoot = gltf.scene;
 
@@ -1131,6 +1153,12 @@ async function init() {
   // The screen continues the same session the boot log started.
   macScreen?.setLines(boot.history().map(toScreenLine));
   renderer.render(scene, camera);
+
+  // Powered on with the boot? Let the startup reach its beep before the room takes over.
+  if (startupAt) {
+    const wait = startupAt + 1800 - performance.now();
+    if (wait > 0) await new Promise((r) => window.setTimeout(r, wait));
+  }
 
   // Hold the final line for a beat, then hand off.
   await new Promise((r) => window.setTimeout(r, 450));
