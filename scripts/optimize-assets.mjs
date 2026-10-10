@@ -1,13 +1,17 @@
 // Asset pipeline: assets/source/scene.glb -> public/scene.glb
 //
-// Pass 1 (cleanup): lossless-ish structural cleanup + removing texture data that
-// is invisible at our camera framing. No new runtime decoders required.
-// Pass 2 (planned, MAG-33): meshopt + quantization, KTX2 textures.
+// Pass 1 (cleanup): structural cleanup + removing texture data that is
+// invisible at our camera framing.
+// Pass 2 (compression): KTX2/Basis textures (smaller downloads and ~4x less
+// GPU memory, since they stay compressed on the GPU) and meshopt geometry.
+// Runtime needs KTX2Loader (transcoder in public/basis/) and MeshoptDecoder.
 //
 // Usage: node scripts/optimize-assets.mjs
 import { NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
-import { dedup, prune, weld } from "@gltf-transform/functions";
+import { dedup, prune, weld, meshopt } from "@gltf-transform/functions";
+import { ktx2 } from "ktx2-encoder/gltf-transform";
+import { MeshoptEncoder } from "meshoptimizer";
 import sharp from "sharp";
 import fs from "node:fs";
 
@@ -26,7 +30,9 @@ const CONSTANT_MR_MATERIALS = new Set([
 const POSTER_MATERIALS = new Set(["poster", "poster1", "poster.2"]);
 const POSTER_MAX = 512;
 
-const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+const io = new NodeIO()
+  .registerExtensions(ALL_EXTENSIONS)
+  .registerDependencies({ "meshopt.encoder": MeshoptEncoder });
 const doc = await io.read(SRC);
 const root = doc.getRoot();
 const log = (...a) => console.log("  ", ...a);
@@ -80,6 +86,30 @@ for (const tex of posterTextures) {
   tex.setImage(new Uint8Array(buf)).setMimeType("image/jpeg");
 }
 log(`posters resized to ${POSTER_MAX}px JPEG: ${posterTextures.size}`);
+
+// 5. KTX2 textures. Encoding settings follow the slot:
+//    - normal maps: UASTC + zstd (ETC1S smears normals), normal-map preset
+//    - color (baseColor, emissive): ETC1S, sRGB transfer, perceptual
+//    - other data (metal/rough, occlusion): ETC1S, linear
+const imageDecoder = async (buffer) => {
+  const { data, info } = await sharp(Buffer.from(buffer)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return { data: new Uint8Array(data), width: info.width, height: info.height };
+};
+const common = { generateMipmap: true, imageDecoder, enableDebug: false };
+await doc.transform(
+  ktx2({ ...common, slots: /normalTexture/, isUASTC: true, isNormalMap: true, needSupercompression: true,
+    enableRDO: true, rdoQualityLevel: 1, isSetKTX2SRGBTransferFunc: false, isPerceptual: false }),
+  ktx2({ ...common, slots: /baseColorTexture|emissiveTexture/, isUASTC: false, qualityLevel: 160,
+    compressionLevel: 2, isSetKTX2SRGBTransferFunc: true, isPerceptual: true }),
+  ktx2({ ...common, slots: /metallicRoughnessTexture|occlusionTexture/, isUASTC: false, qualityLevel: 160,
+    compressionLevel: 2, isSetKTX2SRGBTransferFunc: false, isPerceptual: false }),
+);
+log("textures -> KTX2 (UASTC normals, ETC1S color/data)");
+
+// 6. Geometry: quantize + meshopt compression.
+await MeshoptEncoder.ready;
+await doc.transform(meshopt({ encoder: MeshoptEncoder, level: "medium" }));
+log("geometry -> meshopt + quantization");
 
 await io.write(OUT, doc);
 const mb = (p) => (fs.statSync(p).size / 1024 / 1024).toFixed(2);

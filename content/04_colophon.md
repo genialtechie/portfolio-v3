@@ -17,12 +17,12 @@ The room is the homepage and the MacBook is where everything lives. When the sit
 
 ## Some numbers
 
-- The 3D scene went from 25.0 MB to 12.7 MB without any visible change ([how I did it](#page=writing/scene-diet)).
+- The 3D scene went from 25 MB to 3.9 MB without any visible change, and uses about a quarter of the GPU memory ([how I did it](#page=writing/scene-diet)).
 - The camera limits came from rendering about 1,700 different views and throwing out any that showed empty space ([how I did it](#page=writing/camera-bounds)).
 - The Mac's screen is a real texture in the scene, and it only redraws when the text on it changes.
 
 ## Stack
 
-TypeScript · three.js · Vite · marked · Vercel and Vercel Analytics · gltf-transform for the 3D files
+TypeScript · three.js · Vite · marked · Vercel and Vercel Analytics · gltf-transform, KTX2 and meshopt for the 3D files
 
 The 3D models are CC BY 4.0. You can find the credits under `?` in the room.
