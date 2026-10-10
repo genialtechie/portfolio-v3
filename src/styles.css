@@ -917,6 +917,23 @@ button:active {
   color: var(--accent);
 }
 
+/* Sound is on but waiting for the first click: a soft pulse so it reads as intentional. */
+#sound.is-waiting {
+  animation: sound-wait 1.6s ease-in-out infinite;
+}
+
+@keyframes sound-wait {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #sound.is-waiting {
+    animation: none;
+  }
+}
+
 /* Portfolio pages arrive with a short fade instead of popping in. */
 #overlay-root .md-article,
 #overlay-root .tui {

@@ -1,8 +1,11 @@
-// Opt-in sound. Nothing is fetched until the visitor turns sound on, and
-// browsers won't play audio before an interaction anyway, so the boot log
-// stays silent. Turning sound on plays a short computer startup, then a lo-fi
-// loop fades in. The loop gets quiet in the portfolio and stops in the arcade
-// (Hoopzy has its own audio). Everything pauses when the tab is hidden.
+// Opt-in sound. Nothing is fetched until the visitor turns sound on.
+// The computer startup sound only ever plays during the boot, and only when
+// the browser already allows audio (it won't before the visitor interacts,
+// except on sites they visit a lot). Otherwise a returning visitor who left
+// sound on gets the loop on their first click, tap or key, and the status bar
+// says so in the meantime. Turning sound on later just brings the loop in. The loop is very low in the
+// portfolio and stops in the arcade (Hoopzy has its own audio). Everything
+// pauses when the tab is hidden.
 
 export type Cue = "startup" | "click" | "seek" | "eject" | "tick" | "coin";
 export type SoundScene = "room" | "macos" | "arcade";
@@ -22,15 +25,19 @@ const FILES: Record<Cue | "loop", string> = {
 const LOOP_START = 0.3;
 const LOOP_LENGTH = 42.202449; // 16 bars at 91 BPM
 
-const MUSIC_LEVEL: Record<SoundScene, number> = { room: 0.32, macos: 0.1, arcade: 0 };
+// Music sits under everything; interface sounds sit clearly on top.
+const MUSIC_LEVEL: Record<SoundScene, number> = { room: 0.24, macos: 0.035, arcade: 0 };
 const CUE_LEVEL: Record<Cue, number> = {
   startup: 0.9,
-  click: 0.7,
-  seek: 0.45,
-  eject: 0.5,
-  tick: 0.35,
-  coin: 0.55,
+  click: 1,
+  seek: 0.75,
+  eject: 0.85,
+  tick: 0.6,
+  coin: 0.75,
 };
+
+/** When the startup's beep has played and the loop can come in under its tail. */
+const STARTUP_LOOP_AT_MS = 2600;
 
 const PREF_KEY = "sound.v1";
 
@@ -50,7 +57,10 @@ function writePref(on: boolean) {
   }
 }
 
-export function createSound(onChange: (on: boolean) => void) {
+/** `waiting`: sound is on, but the browser is holding audio until the first interaction. */
+export type SoundState = "off" | "on" | "waiting";
+
+export function createSound(onChange: (state: SoundState, fromUser: boolean) => void) {
   let on = readPref();
   let ctx: AudioContext | null = null;
   let master: GainNode | null = null;
@@ -125,22 +135,25 @@ export function createSound(onChange: (on: boolean) => void) {
     src.start();
   }
 
-  /** Must run inside a user gesture (click, tap or key). */
+  /** Must run inside a user gesture (click, tap or key), unless the browser already allows audio. */
   async function enable(withStartup: boolean) {
     const c = ensureContext();
     if (!c || !master) return;
-    await c.resume().catch(() => {});
-    ramp(master.gain, 1, 0.05);
-    // Small files first so the first interaction sound is ready quickly.
-    for (const name of ["click", "tick", "seek", "eject", "coin"] as const) void load(name);
     if (withStartup) {
       musicHeld = true;
+      // Fetch the startup first: it's the sound the visitor is waiting on.
+      void load("startup");
+    }
+    await c.resume().catch(() => {});
+    ramp(master.gain, 1, 0.05);
+    for (const name of ["click", "tick", "seek", "eject", "coin"] as const) void load(name);
+    if (withStartup) {
       void play("startup");
       // Let the startup do its thing, then bring the loop in under its tail.
       window.setTimeout(() => {
         musicHeld = false;
         applyMusicLevel(2.5);
-      }, 2600);
+      }, STARTUP_LOOP_AT_MS);
     }
     void startLoop();
   }
@@ -154,18 +167,6 @@ export function createSound(onChange: (on: boolean) => void) {
     }, 250);
   }
 
-  // Returning visitors who left sound on: start the loop (no startup) on their
-  // first interaction, since audio can't start before one.
-  if (on) {
-    const kick = () => {
-      window.removeEventListener("pointerdown", kick, true);
-      window.removeEventListener("keydown", kick, true);
-      if (on) void enable(false);
-    };
-    window.addEventListener("pointerdown", kick, true);
-    window.addEventListener("keydown", kick, true);
-  }
-
   document.addEventListener("visibilitychange", () => {
     if (!ctx || !on) return;
     if (document.hidden) void ctx.suspend().catch(() => {});
@@ -176,12 +177,50 @@ export function createSound(onChange: (on: boolean) => void) {
     get on() {
       return on;
     },
+    /** Sound was left on: the boot should power on with the startup sound. */
+    get wantsStartup() {
+      return on;
+    },
+    /**
+     * Whether audio can start right now without a gesture (some browsers allow
+     * it on sites you visit often). If so the context is already running.
+     */
+    async canAutoplay() {
+      const c = ensureContext();
+      if (!c) return false;
+      if (c.state === "running") return true;
+      await Promise.race([c.resume().catch(() => {}), new Promise((r) => window.setTimeout(r, 120))]);
+      return (c.state as AudioContextState) === "running";
+    },
+    /** The machine powers on: startup sound, then the loop. Call from a gesture. */
+    powerOn() {
+      if (on) void enable(true);
+    },
+    /** Sound on, but no boot to go with it (deep links): loop on the first interaction. */
+    resumeOnFirstInteraction() {
+      if (!on) return;
+      onChange("waiting", false);
+      const kick = (e: Event) => {
+        window.removeEventListener("pointerdown", kick, true);
+        window.removeEventListener("keydown", kick, true);
+        // A click on the sound button itself is the toggle's job (it turns sound off).
+        if ((e.target as Element | null)?.closest?.("#sound")) return;
+        if (!on) return;
+        void enable(false);
+        onChange("on", false);
+      };
+      window.addEventListener("pointerdown", kick, true);
+      window.addEventListener("keydown", kick, true);
+    },
     toggle() {
       on = !on;
       writePref(on);
-      if (on) void enable(true);
-      else disable();
-      onChange(on);
+      if (on) {
+        // Turning sound on mid-visit: no startup (that belongs to the boot),
+        // just a click to confirm and the loop fading in.
+        void enable(false).then(() => play("click"));
+      } else disable();
+      onChange(on ? "on" : "off", true);
     },
     cue(name: Cue) {
       void play(name);
