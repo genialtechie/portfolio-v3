@@ -896,3 +896,45 @@ button:active {
 .annotation[hidden] {
   display: none;
 }
+
+/* Status-bar hint: a transient tmux-style message between tabs and action. */
+#hud-hint {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  color: #ffd166;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+
+#hud-hint.is-visible {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  /* No room in the bar on phones: the message sits on its own line above it. */
+  #hud-hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 28px;
+    justify-content: flex-start;
+    padding: 0 12px;
+    background: rgba(0, 0, 0, 0.72);
+    border-top: 1px solid rgba(233, 236, 242, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #hud-hint {
+    transition: none;
+  }
+}

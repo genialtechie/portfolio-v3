@@ -1,4 +1,5 @@
 import { marked } from "marked";
+import { track } from "../analytics";
 
 type MountOptions = {
   onClose: () => void;
@@ -181,6 +182,7 @@ export function mountMacOverlay(root: HTMLElement, opts: MountOptions) {
 
   function openPage(id: string) {
     setHashParam("page", id, "replace");
+    track("open_page", { page: id });
     void loadPage(id);
   }
 

@@ -5,6 +5,8 @@ import { inject as injectVercelAnalytics } from "@vercel/analytics";
 import { injectSpeedInsights } from "@vercel/speed-insights";
 import { createBootLog, describeGpu, mb } from "./boot";
 import { createMacScreen, type MacScreen, type ScreenLine } from "./macScreen";
+import { track } from "./analytics";
+import { createHints } from "./hints";
 
 type Poi = {
   id: string;
@@ -25,12 +27,17 @@ const helpBtn = qs<HTMLButtonElement>("#help");
 const poiLabel = qs<HTMLSpanElement>("#poi-label");
 const poiAction = qs<HTMLButtonElement>("#poi-action");
 const hudTabs = qs<HTMLDivElement>("#hud-tabs");
+const hints = createHints(qs<HTMLSpanElement>("#hud-hint"));
+const isTouch = () => window.matchMedia?.("(hover: none)")?.matches ?? false;
 const overlayRoot = qs<HTMLDivElement>("#overlay-root");
 const annotationLayer = qs<HTMLDivElement>("#annotation-layer");
 const appRoot = qs<HTMLDivElement>("#app");
 
 // Boot log first so it can report everything below, including failures.
-const boot = createBootLog(() => setHashParam("overlay", "macos"));
+const boot = createBootLog(() => {
+  if (boot.active) track("skip_text_mode", { at_ms: Math.round(performance.now()) });
+  setHashParam("overlay", "macos");
+});
 
 // Vercel Web Analytics + Speed Insights (no-op locally; active on Vercel deployments).
 injectVercelAnalytics();
@@ -148,6 +155,8 @@ async function openMacOverlayInternal() {
   overlayOpening = (async () => {
     // Start fetching the overlay chunk while the camera moves into the screen.
     const modP = import("./overlay/macos");
+    hints.clear();
+    window.clearTimeout(orbitHintTimer);
     await zoomIntoScreen();
     overlayRoot.hidden = false;
     const mod = await modP;
@@ -182,6 +191,14 @@ function closeMacOverlayInternal() {
   // Pull back out of the screen to the active POI.
   const poi = pois[activePoiIndex];
   if (poi && gltfRoot) focusOnPoi(poi, { durationMs: 900 });
+
+  // After their first look at the work, point them at the game.
+  if (pois.some((p) => p.id === "arcade")) {
+    window.setTimeout(() => {
+      if (!overlayRoot.hidden || pois[activePoiIndex]?.id !== "mac") return;
+      hints.show("arcade", isTouch() ? "tip: tap 2:hoopzy to visit the arcade" : "tip: → or 2 visits the arcade");
+    }, 1100);
+  }
   requestRenderIfNotRequested(render);
 }
 
@@ -267,6 +284,7 @@ controls.maxDistance = 3.2;
 controls.minPolarAngle = Math.PI * 0.18;
 controls.maxPolarAngle = Math.PI * 0.55;
 controls.addEventListener("change", () => requestRenderIfNotRequested(render));
+controls.addEventListener("start", () => hints.followed("orbit"));
 
 // Cheap "studio" lighting: no shadows, just a key + fill + hemisphere.
 const hemi = new THREE.HemisphereLight(0xdde9ff, 0x0b0c10, 1.0);
@@ -439,13 +457,43 @@ function setActivePoiIndex(nextIndex: number, opts: { durationMs?: number } = {}
   setAnnotationText(annotationEl, entry?.hint ?? "");
   annotationEl.hidden = !entry?.hint;
   focusOnPoi(poi, opts);
+
+  if (poi.id === "arcade") {
+    hints.followed("arcade");
+    // Explain what the arcade is once the camera arrives.
+    window.setTimeout(() => {
+      if (pois[activePoiIndex]?.id !== "arcade" || !overlayRoot.hidden) return;
+      hints.show("arcade-intro", `hoopzy · a game I built · ${isTouch() ? "tap" : "↵"} to play`);
+    }, 900);
+  }
+}
+
+// "Drag to look around": only after sitting still on a stop for a while.
+const ORBIT_HINT_IDLE_MS = 10_000;
+let orbitHintTimer = 0;
+function armOrbitHint() {
+  window.clearTimeout(orbitHintTimer);
+  if (hints.seen("orbit")) return;
+  orbitHintTimer = window.setTimeout(() => {
+    if (!overlayRoot.hidden || helpOpen || transition || appRoot.hasAttribute("data-booting")) return;
+    hints.show("orbit", "tip: drag to look around");
+  }, ORBIT_HINT_IDLE_MS);
+}
+for (const type of ["pointerdown", "keydown", "wheel"] as const) {
+  window.addEventListener(type, () => window.clearTimeout(orbitHintTimer), { passive: true });
 }
 
 /** The one thing each stop does. */
-function runPoiAction(poi: Poi | undefined) {
+function runPoiAction(poi: Poi | undefined, via: "click" | "enter" | "button") {
   if (!poi) return;
-  if (poi.id === "mac") setHashParams({ poi: "mac", overlay: "macos" });
-  else if (poi.id === "arcade") window.open(HOOPZY_URL, "_blank", "noopener");
+  if (poi.id === "mac") {
+    track("open_portfolio", { via });
+    setHashParams({ poi: "mac", overlay: "macos" });
+  } else if (poi.id === "arcade") {
+    track("play_hoopzy", { via });
+    hints.followed("arcade-intro");
+    window.open(HOOPZY_URL, "_blank", "noopener");
+  }
 }
 
 let transition:
@@ -536,7 +584,7 @@ function prevPoi() {
 prevBtn.addEventListener("click", () => prevPoi());
 nextBtn.addEventListener("click", () => nextPoi());
 
-poiAction.addEventListener("click", () => runPoiAction(pois[activePoiIndex]));
+poiAction.addEventListener("click", () => runPoiAction(pois[activePoiIndex], "button"));
 
 window.addEventListener("keydown", (e) => {
   if (appRoot.hasAttribute("data-booting")) return; // boot log owns Enter while loading
@@ -564,7 +612,7 @@ window.addEventListener("keydown", (e) => {
   // Enter runs the current stop's action, unless a control has focus (it handles Enter itself).
   const focused = document.activeElement;
   if (e.key === "Enter" && (focused === document.body || focused === canvas)) {
-    runPoiAction(pois[activePoiIndex]);
+    runPoiAction(pois[activePoiIndex], "enter");
   }
 });
 
@@ -620,7 +668,7 @@ canvas.addEventListener("pointerup", (e) => {
   const id = poiAt(e.clientX, e.clientY);
   if (!id) return;
   const active = pois[activePoiIndex];
-  if (active?.id === id) runPoiAction(active);
+  if (active?.id === id) runPoiAction(active, "click");
   else setHashParam("poi", id);
 });
 
@@ -650,6 +698,7 @@ function render() {
       transition = null;
       controls.update();
       controls.enabled = overlayRoot.hidden;
+      if (overlayRoot.hidden) armOrbitHint();
       done?.();
     } else {
       requestRenderIfNotRequested(render);
@@ -830,6 +879,8 @@ async function init() {
   }
 
   boot.line("ready", "good");
+  track("boot_ready", { ms: Math.round(performance.now()), touch: isTouch() });
+  if (overlayDeepLink) track("open_portfolio", { via: "deeplink" });
   // The screen continues the same session the boot log started.
   macScreen?.setLines(boot.history().map(toScreenLine));
   renderer.render(scene, camera);
@@ -855,8 +906,6 @@ async function init() {
 
   requestRenderIfNotRequested(render);
 }
-
-const isTouch = () => window.matchMedia?.("(hover: none)")?.matches ?? false;
 
 function toScreenLine(l: { text: string; tone?: "muted" | "good" | "warn" }): ScreenLine {
   return { text: l.text, tone: l.tone ?? "muted" };
@@ -888,6 +937,7 @@ void init().catch((err) => {
   console.error(err);
   const msg = err instanceof Error ? err.message : String(err);
   boot.line(`error: ${msg.slice(0, 120)}`, "warn");
+  track("boot_error", { message: msg.slice(0, 100) });
   boot.line("→ text mode", "muted");
   appRoot.removeAttribute("data-booting");
   setHashParam("overlay", "macos", "replace");
