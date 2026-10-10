@@ -9,6 +9,7 @@ export type EventName =
   | "open_portfolio"
   | "open_page"
   | "play_hoopzy"
+  | "close_hoopzy"
   | "hint_shown"
   | "hint_followed";
 

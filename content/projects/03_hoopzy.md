@@ -4,7 +4,7 @@
 
 [Play at hoopzy.fun](https://hoopzy.fun)
 
-Hoopzy is a 60 second basketball game. You touch the ball, swipe up, and real physics carries it to the rim. Every shot gets called out (SWISH, BANK, BRICK, AIRBALL), streaks catch fire, and your best score is saved. It's also the arcade cabinet in this room.
+Hoopzy is a 60 second basketball game. You touch the ball, swipe up, and real physics carries it to the rim. Every shot gets called out (SWISH, BANK, BRICK, AIRBALL), streaks catch fire, and your best score is saved. It's also the arcade cabinet in this room, and you can play it right there.
 
 ## How it works
 
@@ -18,10 +18,10 @@ There are no 3D models to download. The court, hoop, net and even the seams on t
 
 ## What's next
 
-It's going inside this arcade cabinet. If I add a shared leaderboard, I'll need to check scores on a server, since right now your best score only lives in your browser.
+If I add a shared leaderboard, I'll need to check scores on a server, since right now your best score only lives in your browser.
 
 ## Stack
 
-three.js · Ammo.js via enable3d (WebAssembly) · Vite · vanilla JavaScript · Vercel
+three.js · Ammo.js via enable3d (WebAssembly) · Vite · vanilla JavaScript · Netlify
 
 The sound effects are my own, plus some free to use sources.
